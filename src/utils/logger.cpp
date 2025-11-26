@@ -37,10 +37,57 @@ void LOG(LogLevel level, const char* format, ...) {
 }
 
 void LOG_INFO(const char* format, ...) {
+    if (LogLevel::INFO < current_level) return;
+    
+    printf("[INFO] ");
+    
     va_list args;
     va_start(args, format);
-    LOG(LogLevel::INFO, format, args);
+    vprintf(format, args);
     va_end(args);
+    
+    printf("\n");
+    fflush(stdout);
 }
 
-// Similar implementations for WARNING, ERROR, DEBUG...
+void LOG_WARNING(const char* format, ...) {
+    if (LogLevel::WARNING < current_level) return;
+    
+    printf("[WARNING] ");
+    
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    
+    printf("\n");
+    fflush(stdout);
+}
+
+void LOG_ERROR(const char* format, ...) {
+    if (LogLevel::ERROR < current_level) return;
+    
+    printf("[ERROR] ");
+    
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    
+    printf("\n");
+    fflush(stdout);
+}
+
+void LOG_DEBUG(const char* format, ...) {
+    if (LogLevel::DEBUG < current_level) return;
+    
+    printf("[DEBUG] ");
+    
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    
+    printf("\n");
+    fflush(stdout);
+}
