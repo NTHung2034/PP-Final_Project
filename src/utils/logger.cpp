@@ -19,10 +19,6 @@ void LOG(LogLevel level, const char* format, ...) {
     
     const char* level_str[] = {"INFO", "WARNING", "ERROR", "DEBUG"};
     
-    // Get timestamp
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
-    
     // Print header
     printf("[%s] ", level_str[static_cast<int>(level)]);
     

@@ -1,0 +1,32 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/train_cpu.dir/link.d"
+  "CMakeFiles/train_cpu.dir/src/data/cifar10_dataset.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/data/cifar10_dataset.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/data/data_utils.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/data/data_utils.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/layers/conv2d_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/layers/conv2d_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/layers/loss_functions.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/layers/loss_functions.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/layers/maxpool_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/layers/maxpool_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/layers/relu_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/layers/relu_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/layers/upsample_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/layers/upsample_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/models/autoencoder_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/models/autoencoder_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/train_cpu.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/train_cpu.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/utils/logger.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/utils/logger.cpp.o.d"
+  "CMakeFiles/train_cpu.dir/src/utils/memory_pool.cpp.o"
+  "CMakeFiles/train_cpu.dir/src/utils/memory_pool.cpp.o.d"
+  "bin/train_cpu"
+  "bin/train_cpu.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/train_cpu.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

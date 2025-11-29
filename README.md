@@ -94,10 +94,10 @@ cd PP-Final_Project
 ### 2. Download CIFAR-10 Dataset
 
 ```bash
-bash scripts/download_cifar10.sh
+cd scripts && chmod +x download_cifar10.sh && ./download_cifar10.sh && cd ..
 ```
 
-### 3. Build Project
+### 3. Build Project (Phase 1 - CPU Only)
 
 ```bash
 mkdir build && cd build
@@ -105,11 +105,32 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 ```
 
-### 4. Run Complete Pipeline
+### 4. Run Tests
 
 ```bash
-# Phase 1: Train CPU baseline (optional, for comparison)
-./bin/train_cpu --epochs 2
+# Test CPU layers (should pass all 23 tests)
+./bin/test_cpu_layers
+
+# Test data loading (requires CIFAR-10 dataset)
+./bin/test_data_loading
+```
+
+### 5. Train Autoencoder (Phase 1 - CPU)
+
+```bash
+# Quick test (2 epochs)
+./bin/train_cpu --epochs 2 --batch-size 32
+
+# Full training (20 epochs, ~15-20 min/epoch on CPU)
+./bin/train_cpu --epochs 20 --batch-size 32
+```
+
+### 6. Future Phases (GPU)
+
+```bash
+# Build with CUDA support (Phase 2+)
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=ON
+make -j$(nproc)
 
 # Phase 2-3: Train GPU optimized autoencoder
 ./bin/train_gpu --epochs 20
@@ -118,17 +139,16 @@ make -j$(nproc)
 ./bin/extract_features
 bash ../scripts/train_svm.sh
 bash ../scripts/predict_svm.sh
-
-# View results
-python ../scripts/evaluate_results.py
 ```
 
-**Expected Runtime (with optimized GPU):**
+**Expected Runtime:**
 
-- GPU training: ~5-10 minutes (20 epochs)
-- Feature extraction: ~15 seconds
-- SVM training: ~3 minutes
-- **Total:** ~10-15 minutes
+| Phase | Component | Time |
+|-------|-----------|------|
+| Phase 1 | CPU Training (20 epochs) | ~5-7 hours |
+| Phase 2 | GPU Naive (20 epochs) | ~40-60 min |
+| Phase 3 | GPU Optimized (20 epochs) | ~5-10 min |
+| Phase 4 | Feature extraction + SVM | ~5 min |
 
 ---
 
@@ -419,71 +439,98 @@ print("Results saved to Google Drive!")
 
 ```
 PP-Final_Project/
-├── CMakeLists.txt              # Build configuration
+├── CMakeLists.txt              # Build configuration (CUDA optional for Phase 1)
 ├── README.md                   # This file
-├── docs/
+├── .gitignore                  # Git ignore patterns
+│
+├── docs/                       # Documentation
 │   ├── PROJECT_PLAN.md         # Comprehensive project timeline
 │   ├── PHASE_1_GUIDE.md        # CPU implementation guide
+│   ├── PHASE_1_IMPLEMENTATION.md # Phase 1 implementation details (NEW)
 │   ├── PHASE_2_GUIDE.md        # GPU porting guide
 │   ├── PHASE_3_GUIDE.md        # GPU optimization guide
 │   ├── PHASE_4_GUIDE.md        # SVM integration guide
 │   ├── TESTING_DELIVERABLES.md # Testing and submission guide
 │   └── CSC14120_2025_Final_Project.md  # Official requirements
-├── include/
-│   ├── config.h                # Global configuration
-│   ├── data/
-│   │   ├── cifar10_dataset.h   # CIFAR-10 data loader
-│   │   ├── data_types.h        # Tensor definitions
+│
+├── include/                    # Header files
+│   ├── config.h                # Global configuration constants
+│   │
+│   ├── data/                   # Data handling headers
+│   │   ├── cifar10_dataset.h   # CIFAR-10 data loader class
+│   │   ├── data_types.h        # Tensor struct definition
 │   │   └── data_utils.h        # Preprocessing utilities
-│   ├── layers/                 # Neural network layers (CPU)
-│   │   ├── conv2d_cpu.h
-│   │   ├── relu_cpu.h
-│   │   ├── maxpool_cpu.h
-│   │   └── upsample_cpu.h
-│   ├── cuda/                   # GPU implementations
-│   │   ├── gpu_tensor.cuh
-│   │   └── kernels/
-│   │       ├── conv2d_kernel.cuh
-│   │       ├── relu_kernel.cuh
-│   │       ├── maxpool_kernel.cuh
-│   │       └── upsample_kernel.cuh
-│   ├── models/
-│   │   ├── autoencoder_cpu.h
-│   │   ├── autoencoder_gpu.cuh
-│   │   └── feature_extractor.cuh
-│   └── utils/
-│       ├── logger.h
-│       └── memory_pool.h
-├── src/
-│   ├── data/
-│   │   ├── cifar10_dataset.cpp
-│   │   └── data_utils.cpp
-│   ├── layers/                 # CPU layer implementations
-│   ├── cuda/                   # GPU kernel implementations
-│   ├── models/                 # Autoencoder implementations
-│   ├── utils/
-│   ├── main_train.cpp          # CPU training entry point
-│   ├── train_cpu.cpp
-│   ├── train_gpu.cu
-│   └── extract_features.cu
-├── external/
-│   └── libsvm/                 # LIBSVM library (downloaded)
-├── data/
-│   └── cifar-10-batches-bin/   # CIFAR-10 dataset (downloaded)
-├── models/
-│   └── saved_weights/          # Trained model weights
-├── results/                    # Evaluation results and figures
-├── scripts/
-│   ├── download_cifar10.sh
-│   ├── train_svm.sh
-│   ├── predict_svm.sh
-│   ├── evaluate_results.py
-│   └── benchmark_all.sh
-└── tests/
-    ├── unit/                   # Unit tests
-    ├── integration/            # Integration tests
-    └── performance/            # Performance benchmarks
+│   │
+│   ├── layers/                 # Neural network layers (CPU) - Phase 1
+│   │   ├── conv2d_cpu.h        # 2D Convolution layer
+│   │   ├── relu_cpu.h          # ReLU activation
+│   │   ├── maxpool_cpu.h       # Max pooling layer
+│   │   ├── upsample_cpu.h      # Nearest neighbor upsampling
+│   │   └── loss_functions.h    # MSE loss function
+│   │
+│   ├── models/                 # Model definitions
+│   │   └── autoencoder_cpu.h   # CPU Autoencoder (751,875 params)
+│   │
+│   └── utils/                  # Utility classes
+│       ├── logger.h            # Logging macros
+│       └── memory_pool.h       # Memory pool for efficiency
+│
+├── src/                        # Source files
+│   ├── data/                   # Data module implementation
+│   │   ├── cifar10_dataset.cpp # CIFAR-10 binary loader
+│   │   ├── data_utils.cpp      # Preprocessing functions
+│   │   └── README.md           # Data module documentation
+│   │
+│   ├── layers/                 # CPU layer implementations - Phase 1
+│   │   ├── conv2d_cpu.cpp      # Forward/backward convolution
+│   │   ├── relu_cpu.cpp        # ReLU forward/backward
+│   │   ├── maxpool_cpu.cpp     # MaxPool with index tracking
+│   │   ├── upsample_cpu.cpp    # Nearest neighbor upsample
+│   │   └── loss_functions.cpp  # MSE computation
+│   │
+│   ├── models/                 # Model implementations
+│   │   └── autoencoder_cpu.cpp # Encoder-decoder network
+│   │
+│   ├── utils/                  # Utility implementations
+│   │   ├── logger.cpp          # Logging functions
+│   │   └── memory_pool.cpp     # Memory pool
+│   │
+│   ├── train_cpu.cpp           # CPU training entry point (Phase 1)
+│   └── main_train.cpp          # Legacy training entry
+│
+├── tests/                      # Test files
+│   ├── test_data_loading.cpp   # Data loading tests
+│   └── test_cpu_layers.cpp     # CPU layer tests (23 tests)
+│
+├── scripts/                    # Helper scripts
+│   └── download_cifar10.sh     # CIFAR-10 dataset download
+│
+├── data/                       # Dataset directory (created by build)
+│   └── cifar-10-batches-bin/   # CIFAR-10 binary files
+│
+├── models/                     # Model weights directory
+│   └── saved_weights/          # Trained model weights (.bin)
+│
+├── results/                    # Evaluation results
+│
+└── external/                   # External libraries
+    └── libsvm/                 # LIBSVM (Phase 4)
 ```
+
+### Implementation Status
+
+| Component | Status | Tests |
+|-----------|--------|-------|
+| Data Loading | ✅ Complete | 7 tests |
+| Conv2D Layer | ✅ Complete | 2 tests |
+| ReLU Layer | ✅ Complete | 3 tests |
+| MaxPool Layer | ✅ Complete | 2 tests |
+| Upsample Layer | ✅ Complete | 3 tests |
+| MSE Loss | ✅ Complete | 4 tests |
+| Autoencoder | ✅ Complete | 4 tests |
+| Training Loop | ✅ Complete | - |
+| Weight I/O | ✅ Complete | 3 tests |
+| **Total** | **Phase 1 Complete** | **23 tests passing** |
 
 ---
 
@@ -514,7 +561,8 @@ PP-Final_Project/
 ### Implementation Guides
 
 - **[PROJECT_PLAN.md](docs/PROJECT_PLAN.md):** Complete project timeline and milestones
-- **[PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md):** CPU baseline implementation
+- **[PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md):** CPU baseline implementation guide
+- **[PHASE_1_IMPLEMENTATION.md](docs/PHASE_1_IMPLEMENTATION.md):** Phase 1 implementation details ✅ Complete
 - **[PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md):** GPU porting and naive kernels
 - **[PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md):** Advanced GPU optimizations
 - **[PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md):** SVM integration and evaluation

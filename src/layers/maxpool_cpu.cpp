@@ -130,8 +130,6 @@ Tensor MaxPoolCPU::backward(const Tensor& grad_output) {
     // Get dimensions
     int batch = cached_input_shape_[0];
     int channels = cached_input_shape_[1];
-    int in_h = cached_input_shape_[2];
-    int in_w = cached_input_shape_[3];
     
     int out_h = grad_output.height();
     int out_w = grad_output.width();

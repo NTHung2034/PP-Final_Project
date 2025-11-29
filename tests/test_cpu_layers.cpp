@@ -31,6 +31,7 @@
 #include <iomanip>
 #include <cmath>
 #include <random>
+#include <cstdio>
 
 // Test result tracking
 int tests_passed = 0;
@@ -439,8 +440,8 @@ void test_weight_io() {
     try {
         AutoencoderCPU model1;
         
-        // Save weights
-        std::string path = "/tmp/test_weights.bin";
+        // Save weights to temp directory (use current directory for portability)
+        std::string path = "test_weights_temp.bin";
         model1.save_weights(path);
         
         test_pass("Weights saved successfully");
@@ -471,6 +472,9 @@ void test_weight_io() {
             test_fail("Weight verification", 
                       "Output difference: " + std::to_string(diff));
         }
+        
+        // Cleanup temp file
+        std::remove(path.c_str());
         
     } catch (const std::exception& e) {
         test_fail("Weight I/O test", e.what());
