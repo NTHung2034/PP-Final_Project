@@ -6,6 +6,47 @@ A high-performance implementation of an autoencoder-based feature learning syste
 
 ---
 
+## 🚀 Quick Start for Intel Core i5 (Windows 11)
+
+**Don't have an NVIDIA GPU? No problem!** You can still work on this project:
+
+### Step 1: Install Dependencies
+
+```powershell
+# Run automated setup script
+.\scripts\setup_windows.ps1
+```
+
+### Step 2: Download CIFAR-10 Dataset
+
+```powershell
+# Download and extract CIFAR-10 (162 MB)
+.\scripts\download_cifar10.ps1
+```
+
+### Step 3: Build CPU Version (Phase 1)
+
+```powershell
+# Build CPU-only version (no CUDA required)
+.\scripts\build_cpu.ps1
+```
+
+### Step 4: Run Training
+
+```powershell
+# Run Phase 1 CPU baseline
+.\build\bin\Release\train_autoencoder.exe
+```
+
+### Step 5: GPU Phases (Use Google Colab)
+
+For Phases 2-4 (GPU optimization), use the free GPU runtime in Google Colab:
+
+- See [Google Colab Setup](#google-colab-setup) section below
+- All GPU code runs in the cloud - no local NVIDIA GPU needed!
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
@@ -41,13 +82,15 @@ This project implements a two-stage machine learning pipeline:
 
 ### Hardware Requirements
 
-**Local Development:**
+**Local Development (Intel Core i5 Compatible):**
 
-- **CPU:** Multi-core x86_64 processor
-- **GPU:** NVIDIA GPU with Compute Capability ≥6.0
+- **CPU:** Multi-core x86_64 processor (Intel Core i5/i7 or AMD Ryzen 5/7)
+  - Phase 1 (CPU baseline) runs locally
+- **GPU (Optional):** NVIDIA GPU with Compute Capability ≥6.0
   - Recommended: RTX 3060+, Tesla T4+, V100, or A100
   - Minimum: GTX 1660 or equivalent
-- **RAM:** 16GB+ system memory
+  - **Don't have NVIDIA GPU?** Use Google Colab for Phases 2-4 (free GPU runtime)
+- **RAM:** 16GB+ system memory (8GB minimum for Phase 1)
 - **Storage:** 10GB free space
 
 **⚠️ Intel Core i5 / Systems without NVIDIA GPU:**

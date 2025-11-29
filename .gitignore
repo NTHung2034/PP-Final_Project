@@ -1,1 +1,5 @@
 .prompts
+
+data/cifar-10-binary
+
+build
