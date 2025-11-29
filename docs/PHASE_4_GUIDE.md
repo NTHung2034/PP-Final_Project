@@ -288,6 +288,8 @@ Test features: data/test_features.txt (10000 samples)
 
 **Download:**
 
+**Linux/Ubuntu:**
+
 ```bash
 cd external
 git clone https://github.com/cjlin1/libsvm.git
@@ -295,16 +297,48 @@ cd libsvm
 make
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+cd external
+git clone https://github.com/cjlin1/libsvm.git
+cd libsvm
+
+# Option 1: Use pre-compiled Windows binaries
+# Download from: https://www.csie.ntu.edu.tw/~cjlin/libsvm/
+# Extract to: external/libsvm/windows/
+
+# Option 2: Build with Visual Studio (if you have it)
+# Open windows/libsvm.sln in Visual Studio and build
+
+# Option 3: Use WSL (Windows Subsystem for Linux)
+wsl make
+```
+
 **Verify installation:**
+
+**Linux:**
 
 ```bash
 ./svm-train
 # Should show usage instructions
 ```
 
+**Windows PowerShell:**
+
+```powershell
+# If using pre-compiled binaries:
+.\windows\svm-train.exe
+
+# If using WSL:
+wsl ./svm-train
+```
+
 #### Step 4.2.2: Train SVM with Default Parameters
 
 **Simple training script:**
+
+**Linux/Ubuntu:** `scripts/train_svm.sh`
 
 ```bash
 #!/bin/bash
@@ -327,12 +361,48 @@ echo "SVM training complete!"
 echo "Model saved to $MODEL_FILE"
 ```
 
+**Windows 11 PowerShell:** `scripts/train_svm.ps1`
+
+```powershell
+# scripts/train_svm.ps1
+
+$TRAIN_FILE = "data\train_features.txt"
+$MODEL_FILE = "models\svm_model.bin"
+
+Write-Output "Training SVM on extracted features..."
+
+# Using pre-compiled Windows binaries
+Measure-Command {
+    .\external\libsvm\windows\svm-train.exe `
+        -s 0 `      # C-SVC (classification)
+        -t 2 `      # RBF kernel
+        -c 10 `     # Cost parameter
+        -g 0.0001 ` # Gamma (1/num_features)
+        -q `        # Quiet mode
+        $TRAIN_FILE `
+        $MODEL_FILE
+}
+
+Write-Output "SVM training complete!"
+Write-Output "Model saved to $MODEL_FILE"
+```
+
 **Run:**
+
+**Linux:**
 
 ```bash
 chmod +x scripts/train_svm.sh
 ./scripts/train_svm.sh
 ```
+
+**Windows PowerShell:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\train_svm.ps1
+```
+
+**✅ Intel Core i5 users can run this locally** - SVM training works on CPU!
 
 **Expected output:**
 
@@ -347,7 +417,9 @@ Model saved to models/svm_model.bin
 
 #### Step 4.2.3: Hyperparameter Tuning (Optional)
 
-**Grid search script:** `scripts/svm_grid_search.sh`
+**Grid search script:**
+
+**Linux:** `scripts/svm_grid_search.sh`
 
 ```bash
 #!/bin/bash
@@ -377,6 +449,39 @@ echo "Grid search complete. Results in $OUTPUT_FILE"
 cat $OUTPUT_FILE | grep "Cross Validation Accuracy"
 ```
 
+**Windows PowerShell:** `scripts/svm_grid_search.ps1`
+
+```powershell
+# scripts/svm_grid_search.ps1
+
+$TRAIN_FILE = "data\train_features.txt"
+$OUTPUT_FILE = "results\svm_grid_search.log"
+
+"Running SVM grid search..." | Out-File $OUTPUT_FILE
+
+# Grid search over C and gamma
+$C_values = @(1, 10, 100)
+$gamma_values = @(0.00001, 0.0001, 0.001)
+
+foreach ($C in $C_values) {
+    foreach ($gamma in $gamma_values) {
+        "Testing C=$C, gamma=$gamma" | Out-File -Append $OUTPUT_FILE
+
+        .\external\libsvm\windows\svm-train.exe `
+            -v 5 `  # 5-fold cross-validation
+            -s 0 -t 2 `
+            -c $C -g $gamma `
+            -q `
+            $TRAIN_FILE *>> $OUTPUT_FILE
+
+        "" | Out-File -Append $OUTPUT_FILE
+    }
+}
+
+Write-Output "Grid search complete. Results in $OUTPUT_FILE"
+Select-String -Path $OUTPUT_FILE -Pattern "Cross Validation Accuracy"
+```
+
 **Recommended parameters based on literature:**
 
 - **C (Cost):** 10 (regularization parameter)
@@ -391,7 +496,9 @@ cat $OUTPUT_FILE | grep "Cross Validation Accuracy"
 
 #### Step 4.3.1: Predict on Test Set
 
-**Prediction script:** `scripts/predict_svm.sh`
+**Prediction script:**
+
+**Linux:** `scripts/predict_svm.sh`
 
 ```bash
 #!/bin/bash
@@ -409,11 +516,39 @@ echo "Predicting on test set..."
 echo "Predictions saved to $OUTPUT_FILE"
 ```
 
+**Windows PowerShell:** `scripts/predict_svm.ps1`
+
+```powershell
+# scripts/predict_svm.ps1
+
+$TEST_FILE = "data\test_features.txt"
+$MODEL_FILE = "models\svm_model.bin"
+$OUTPUT_FILE = "results\test_predictions.txt"
+
+Write-Output "Predicting on test set..."
+.\external\libsvm\windows\svm-predict.exe `
+    $TEST_FILE `
+    $MODEL_FILE `
+    $OUTPUT_FILE
+
+Write-Output "Predictions saved to $OUTPUT_FILE"
+```
+
 **Run:**
+
+**Linux:**
 
 ```bash
 ./scripts/predict_svm.sh
 ```
+
+**Windows PowerShell:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\predict_svm.ps1
+```
+
+**✅ Intel Core i5 users can run this locally** - Prediction works on CPU!
 
 **Expected output:**
 
@@ -519,9 +654,22 @@ if __name__ == '__main__':
 
 **Run:**
 
+**Linux/macOS:**
+
 ```bash
 python scripts/evaluate_results.py
 ```
+
+**Windows 11 PowerShell:**
+
+```powershell
+python scripts\\evaluate_results.py
+
+# Or if python is not in PATH:
+py scripts\\evaluate_results.py
+```
+
+**✅ Intel Core i5 users can run this locally** - Python evaluation works on any system!
 
 **Expected output:**
 
@@ -696,53 +844,147 @@ def visualize_reconstructions():
 
 ## 6. Google Colab Notes
 
+### 🎯 Complete Workflow for Intel Core i5 Users
+
+**This section shows the complete end-to-end pipeline on Google Colab.**
+
 ### 6.1 Full Pipeline on Colab
 
 **Notebook cell structure:**
 
 ```python
-# Cell 1: Setup
+# Cell 1: Setup environment
 !git clone https://github.com/YOUR_REPO/PP-Final_Project.git
 %cd PP-Final_Project
-!bash scripts/setup_colab.sh
 
-# Cell 2: Train autoencoder (or load pretrained)
-!./bin/train_gpu  # Takes ~5-10 minutes with Phase 3 optimizations
+# Download CIFAR-10
+!bash scripts/download_cifar10.sh
 
-# Cell 3: Extract features
+# Cell 2: Build project (with GPU support)
+!mkdir -p build
+%cd build
+!cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=75
+!make -j4
+
+# Cell 3: Train autoencoder (GPU-accelerated, ~5-10 min)
+!./bin/train_gpu --epochs 20
+# Output: models/saved_weights/gpu_encoder_weights.bin
+
+# Cell 4: Extract features (GPU-accelerated, ~15-20 sec)
 !./bin/extract_features
-# Output: train_features.txt, test_features.txt
+# Output: data/train_features.txt, data/test_features.txt
 
-# Cell 4: Install LIBSVM
-!cd external && git clone https://github.com/cjlin1/libsvm.git
-!cd external/libsvm && make
+# Cell 5: Install and build LIBSVM
+!cd ../external && git clone https://github.com/cjlin1/libsvm.git
+!cd ../external/libsvm && make
 
-# Cell 5: Train SVM
+# Cell 6: Train SVM (CPU, 2-5 minutes)
+%cd ..
 !bash scripts/train_svm.sh
-# Takes 2-5 minutes
+# Output: models/svm_model.bin
 
-# Cell 6: Evaluate
+# Cell 7: Predict and evaluate (CPU, <1 minute)
 !bash scripts/predict_svm.sh
-!python scripts/evaluate_results.py
+# Output: results/test_predictions.txt
+# Shows: Accuracy = 62.34% (6234/10000)
 
-# Cell 7: Visualize results
+!python scripts/evaluate_results.py
+# Generates confusion matrix and detailed report
+
+# Cell 8: Visualize results
 from IPython.display import Image, display
+print("\n📊 Confusion Matrix:")
 display(Image('results/confusion_matrix.png'))
+
+print("\n📈 t-SNE Feature Visualization:")
 display(Image('results/tsne_features.png'))
+
+# Cell 9: Display summary
+with open('results/evaluation_summary.txt', 'r') as f:
+    print(f.read())
 ```
 
-### 6.2 Save Results to Drive
+### 6.2 Save Results to Google Drive
 
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
 
-!mkdir -p /content/drive/MyDrive/CIFAR10_Results
-!cp results/* /content/drive/MyDrive/CIFAR10_Results/
-!cp models/*.bin /content/drive/MyDrive/CIFAR10_Results/
+# Save all results
+!mkdir -p /content/drive/MyDrive/CIFAR10_Final_Results
+!cp -r results/* /content/drive/MyDrive/CIFAR10_Final_Results/
+!cp models/svm_model.bin /content/drive/MyDrive/CIFAR10_Final_Results/
+!cp models/saved_weights/* /content/drive/MyDrive/CIFAR10_Final_Results/
+!cp data/train_features.txt /content/drive/MyDrive/CIFAR10_Final_Results/
+!cp data/test_features.txt /content/drive/MyDrive/CIFAR10_Final_Results/
+
+print("✅ Complete! All results saved to Google Drive")
+print("📂 Location: MyDrive/CIFAR10_Final_Results/")
+```
+
+### 6.3 Download Results and Continue Locally (Intel Core i5)
+
+**Option 1: Download via Google Drive**
+
+1. Open Google Drive
+2. Navigate to `MyDrive/CIFAR10_Final_Results/`
+3. Download `train_features.txt` and `test_features.txt`
+4. Place in your local `data/` folder
+
+**Option 2: Direct download from Colab**
+
+```python
+# Zip all results
+!zip -r final_results.zip results/ models/ data/*_features.txt
+
+# Download
+from google.colab import files
+files.download('final_results.zip')
+```
+
+**Then on Windows 11:**
+
+```powershell
+# Extract downloaded zip
+Expand-Archive final_results.zip -DestinationPath .
+
+# Train SVM locally (Intel Core i5 can handle this)
+powershell -ExecutionPolicy Bypass -File scripts\train_svm.ps1
+
+# Predict and evaluate locally
+powershell -ExecutionPolicy Bypass -File scripts\predict_svm.ps1
+python scripts\evaluate_results.py
+```
+
+### 6.4 Intel Core i5 Complete Workflow Summary
+
+**✅ What you accomplished across all phases:**
+
+| Phase       | Where                | Hardware          | Task                         | Time             |
+| ----------- | -------------------- | ----------------- | ---------------------------- | ---------------- |
+| **Phase 1** | Local Windows 11     | Intel Core i5 CPU | CPU baseline training        | ~18 min/epoch    |
+| **Phase 2** | Google Colab         | T4 GPU            | Naive GPU implementation     | ~2.5 min/epoch   |
+| **Phase 3** | Google Colab         | T4 GPU            | Optimized GPU (50×+ speedup) | ~20-30 sec/epoch |
+| **Phase 4** | Google Colab → Local | T4 GPU + i5 CPU   | Feature extraction + SVM     | ~5 min total     |
+
+**🎉 Final Results:**
+
+- ✅ 60-65% classification accuracy achieved
+- ✅ 50-80× speedup over CPU baseline
+- ✅ Complete end-to-end pipeline working
+- ✅ All results saved and documented
+
+**📊 Deliverables:**
+
+- Trained autoencoder weights
+- Extracted 8,192-dim features (60K samples)
+- Trained SVM classifier
+- Confusion matrix and accuracy report
+- Performance comparison data
 
 print("Results saved to Google Drive!")
-```
+
+````
 
 ---
 
@@ -765,7 +1007,7 @@ print("Results saved to Google Drive!")
    ```bash
    ./external/libsvm/svm-scale -s scale_params train_features.txt > train_scaled.txt
    ./external/libsvm/svm-scale -r scale_params test_features.txt > test_scaled.txt
-   ```
+````
 
 3. **Poor SVM hyperparameters**
    - Run grid search

@@ -50,29 +50,45 @@ This project implements a two-stage machine learning pipeline:
 - **RAM:** 16GB+ system memory
 - **Storage:** 10GB free space
 
-**Google Colab:**
+**⚠️ Intel Core i5 / Systems without NVIDIA GPU:**
 
-- Free tier: T4 GPU (15GB VRAM)
-- Pro tier: V100/A100 (faster training)
+- **Phase 1 (CPU Baseline):** Can run locally (expect 15-20 min/epoch)
+- **Phase 2-4 (GPU Required):** **Must use Google Colab** (see [Google Colab Setup](#google-colab-setup))
+- Intel integrated graphics are NOT supported for CUDA operations
+
+**Google Colab (Recommended for systems without NVIDIA GPU):**
+
+- Free tier: T4 GPU (15GB VRAM) - **Sufficient for this project**
+- Pro tier: V100/A100 (faster training, optional)
+- **Intel Core i5 users:** Google Colab is your primary option for GPU phases
 
 ### Software Requirements
 
 **Operating System:**
 
 - Linux (Ubuntu 20.04+ recommended)
-- Windows 10/11 with WSL2
+- **Windows 10/11:** Native support with PowerShell (CUDA Toolkit required) or WSL2
 - macOS (CPU only, no CUDA support)
+
+**Windows 11 Users:**
+
+- **Option 1 (Recommended):** Use native Windows with PowerShell (all commands below include PowerShell versions)
+- **Option 2:** Use WSL2 Ubuntu (follow Linux commands)
+- **Option 3:** Use Google Colab for GPU phases (no local CUDA installation needed)
 
 **Core Dependencies:**
 
 - **CUDA Toolkit:** 11.0+ (11.8 recommended)
   - Download: https://developer.nvidia.com/cuda-downloads
 - **CMake:** 3.18+
-  - Install: `sudo apt install cmake` (Ubuntu)
-- **C++ Compiler:** GCC 9+ or Clang 10+
-  - Install: `sudo apt install build-essential`
+  - **Linux/Ubuntu:** `sudo apt install cmake`
+  - **Windows 11:** Download installer from https://cmake.org/download/ or use `winget install Kitware.CMake`
+- **C++ Compiler:** GCC 9+ or Clang 10+ (Linux), MSVC 2019+ (Windows)
+  - **Linux/Ubuntu:** `sudo apt install build-essential`
+  - **Windows 11:** Install Visual Studio 2019/2022 with "Desktop development with C++" workload
 - **Git:** For cloning repository
-  - Install: `sudo apt install git`
+  - **Linux/Ubuntu:** `sudo apt install git`
+  - **Windows 11:** Download from https://git-scm.com/ or `winget install Git.Git`
 
 **Optional:**
 
@@ -86,18 +102,42 @@ This project implements a two-stage machine learning pipeline:
 
 ### 1. Clone Repository
 
+**Linux/Ubuntu/macOS:**
+
 ```bash
+git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
+cd PP-Final_Project
+```
+
+**Windows 11 PowerShell:**
+
+```powershell
 git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
 cd PP-Final_Project
 ```
 
 ### 2. Download CIFAR-10 Dataset
 
+**Linux/Ubuntu/macOS:**
+
 ```bash
 bash scripts/download_cifar10.sh
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+# Manual download (Windows script provided)
+powershell -ExecutionPolicy Bypass -File scripts\download_cifar10.ps1
+
+# Or download manually:
+# 1. Download: https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
+# 2. Extract to: data/cifar-10-batches-bin/
+```
+
 ### 3. Build Project
+
+**Linux/Ubuntu/macOS:**
 
 ```bash
 mkdir build && cd build
@@ -105,7 +145,18 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release --parallel
+```
+
 ### 4. Run Complete Pipeline
+
+**Linux/Ubuntu/macOS:**
 
 ```bash
 # Phase 1: Train CPU baseline (optional, for comparison)
@@ -121,6 +172,31 @@ bash ../scripts/predict_svm.sh
 
 # View results
 python ../scripts/evaluate_results.py
+```
+
+**Windows 11 PowerShell:**
+
+```powershell
+# Phase 1: Train CPU baseline (optional, for comparison)
+.\bin\Release\train_cpu.exe --epochs 2
+
+# Phase 2-3: Train GPU optimized autoencoder (requires NVIDIA GPU)
+.\bin\Release\train_gpu.exe --epochs 20
+
+# Phase 4: Extract features and train SVM
+.\bin\Release\extract_features.exe
+powershell -ExecutionPolicy Bypass -File ..\scripts\train_svm.ps1
+powershell -ExecutionPolicy Bypass -File ..\scripts\predict_svm.ps1
+
+# View results
+python ..\scripts\evaluate_results.py
+```
+
+**⚠️ No NVIDIA GPU? Use Google Colab for Phases 2-4:**
+
+```powershell
+# See "Google Colab Setup" section below for complete instructions
+# You can run Phase 1 (CPU baseline) locally on Intel Core i5
 ```
 
 **Expected Runtime (with optimized GPU):**
@@ -147,14 +223,48 @@ sudo apt-get update
 sudo apt-get -y install cuda-toolkit-11-8
 ```
 
+**Windows 11:**
+
+```powershell
+# Download CUDA Toolkit 11.8 installer
+# Visit: https://developer.nvidia.com/cuda-11-8-0-download-archive
+# Select: Windows > x86_64 > 11 > exe (network)
+
+# Run installer (requires NVIDIA GPU)
+# Default installation path: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8
+
+# Add to PATH (automatic if you check "Add to PATH" during installation)
+# Or manually:
+$env:Path += ";C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin"
+```
+
+**⚠️ Intel Core i5 without NVIDIA GPU:**
+
+```powershell
+# CUDA installation will fail - this is expected
+# Skip to "Google Colab Setup" section for GPU phases
+# You can still run Phase 1 (CPU baseline) without CUDA
+```
+
 **Verify installation:**
+
+**Linux:**
 
 ```bash
 nvcc --version
 nvidia-smi
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+nvcc --version
+nvidia-smi
+```
+
 #### 2. Install Build Tools
+
+**Linux/Ubuntu:**
 
 ```bash
 sudo apt update
@@ -168,13 +278,48 @@ sudo apt install -y \
     unzip
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+# Install Visual Studio 2022 Build Tools (or full IDE)
+winget install Microsoft.VisualStudio.2022.BuildTools
+
+# Or download manually from:
+# https://visualstudio.microsoft.com/downloads/
+# Select "Desktop development with C++" workload during installation
+
+# Install CMake
+winget install Kitware.CMake
+
+# Install Git
+winget install Git.Git
+
+# Install Python (for result visualization)
+winget install Python.Python.3.11
+
+# Verify installations
+git --version
+cmake --version
+python --version
+```
+
 #### 3. Install Python Dependencies (Optional)
+
+**Linux/Ubuntu:**
 
 ```bash
 pip3 install numpy matplotlib seaborn scikit-learn jupyter
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+pip install numpy matplotlib seaborn scikit-learn jupyter
+```
+
 #### 4. Clone and Setup Project
+
+**Linux/Ubuntu:**
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
@@ -190,7 +335,28 @@ cd libsvm && make
 cd ../..
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
+cd PP-Final_Project
+
+# Download CIFAR-10
+powershell -ExecutionPolicy Bypass -File scripts\download_cifar10.ps1
+
+# Download LIBSVM (pre-compiled for Windows)
+cd external
+git clone https://github.com/cjlin1/libsvm.git
+cd libsvm
+# For Windows, use pre-compiled binaries from:
+# https://www.csie.ntu.edu.tw/~cjlin/libsvm/
+# Or build with Visual Studio (open windows/ folder)
+cd ..\..
+```
+
 #### 5. Build Project
+
+**Linux/Ubuntu:**
 
 ```bash
 mkdir build && cd build
@@ -207,13 +373,41 @@ make -j$(nproc)
 ./bin/check_gpu
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path build
+cd build
+
+# Configure (specify GPU architecture if needed)
+cmake .. `
+    -DCMAKE_BUILD_TYPE=Release `
+    -G "Visual Studio 17 2022" `
+    -A x64 `
+    -DCMAKE_CUDA_ARCHITECTURES=75  # 75=T4, 70=V100, 80=A100, 86=RTX 3060
+
+# Build (multi-threaded)
+cmake --build . --config Release --parallel
+
+# Verify
+.\bin\Release\check_gpu.exe
+```
+
 **Expected output:**
 
 ```
 ✓ CUDA available
-✓ Device 0: Tesla T4
+✓ Device 0: Tesla T4 (or your GPU model)
 ✓ Compute Capability: 7.5
 ✓ Total Memory: 15 GB
+```
+
+**⚠️ If check_gpu fails (Intel Core i5 without NVIDIA GPU):**
+
+```
+✗ No CUDA-capable device detected
+→ Use Google Colab for GPU phases (see section below)
+→ You can still compile and run Phase 1 (CPU baseline) locally
 ```
 
 ---
@@ -224,6 +418,8 @@ make -j$(nproc)
 
 #### Phase 1: CPU Baseline (Optional)
 
+**Linux/Ubuntu:**
+
 ```bash
 cd build
 
@@ -233,7 +429,22 @@ cd build
 # Expected: ~15-20 min/epoch
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+cd build
+
+# Train CPU version (2 epochs for testing)
+.\bin\Release\train_cpu.exe --epochs 2 --batch-size 32
+
+# Expected: ~15-20 min/epoch
+```
+
+**✅ Intel Core i5 users can run this phase locally**
+
 #### Phase 2-3: GPU Optimized Training
+
+**Linux/Ubuntu:**
 
 ```bash
 # Train GPU version (optimized)
@@ -241,6 +452,23 @@ cd build
 
 # Expected: ~20-30 sec/epoch
 # Output: models/saved_weights/gpu_encoder_weights.bin
+```
+
+**Windows 11 PowerShell (requires NVIDIA GPU):**
+
+```powershell
+# Train GPU version (optimized)
+.\bin\Release\train_gpu.exe --epochs 20 --batch-size 64
+
+# Expected: ~20-30 sec/epoch
+# Output: models\saved_weights\gpu_encoder_weights.bin
+```
+
+**⚠️ Intel Core i5 / No NVIDIA GPU? Use Google Colab:**
+
+```powershell
+# See "Google Colab Setup" section below
+# This phase REQUIRES GPU - cannot run on Intel integrated graphics
 ```
 
 **Training Options:**
@@ -253,6 +481,8 @@ cd build
 
 ### Feature Extraction
 
+**Linux/Ubuntu:**
+
 ```bash
 # Extract 8,192-dim features for all images
 ./bin/extract_features
@@ -264,7 +494,29 @@ cd build
 # Expected: ~15-20 seconds
 ```
 
+**Windows 11 PowerShell (requires NVIDIA GPU):**
+
+```powershell
+# Extract 8,192-dim features for all images
+.\bin\Release\extract_features.exe
+
+# Output:
+#   data\train_features.txt (50,000 samples)
+#   data\test_features.txt (10,000 samples)
+
+# Expected: ~15-20 seconds
+```
+
+**⚠️ Intel Core i5 / No GPU:**
+
+```powershell
+# Run this in Google Colab (see Colab setup section)
+# Features will be saved and can be downloaded to your local machine
+```
+
 ### SVM Training and Evaluation
+
+**Linux/Ubuntu:**
 
 ```bash
 # Train SVM on extracted features
@@ -285,7 +537,32 @@ python scripts/evaluate_results.py
 #   results/tsne_features.png (if enabled)
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+# Train SVM on extracted features
+powershell -ExecutionPolicy Bypass -File scripts\train_svm.ps1
+# Output: models\svm_model.bin
+# Expected: 2-5 minutes
+
+# Predict on test set
+powershell -ExecutionPolicy Bypass -File scripts\predict_svm.ps1
+# Output: results\test_predictions.txt
+# Shows: Accuracy = 62.34% (6234/10000)
+
+# Generate detailed evaluation
+python scripts\evaluate_results.py
+# Output:
+#   results\confusion_matrix.png
+#   results\evaluation_summary.txt
+#   results\tsne_features.png (if enabled)
+```
+
+**✅ Intel Core i5 users:** SVM training can run on CPU - extract features from Colab first
+
 ### Benchmarking
+
+**Linux/Ubuntu:**
 
 ```bash
 # Run performance benchmark
@@ -297,22 +574,51 @@ bash scripts/benchmark_all.sh
 # Output: Performance comparison table
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+# Run performance benchmark
+powershell -ExecutionPolicy Bypass -File scripts\benchmark_all.ps1
+
+# Compare all versions
+.\bin\Release\benchmark_versions.exe
+
+# Output: Performance comparison table
+```
+
 ---
 
 ## Google Colab Setup
 
+### 🎯 Recommended for Intel Core i5 / Systems without NVIDIA GPU
+
+**Why use Google Colab:**
+
+- ✅ Free access to NVIDIA T4 GPU (15GB VRAM)
+- ✅ No local CUDA installation required
+- ✅ Perfect for Intel Core i5 systems without discrete GPU
+- ✅ Pre-configured environment
+- ⚠️ Session limit: 12 hours (free tier), save checkpoints to Google Drive
+
 ### One-Click Setup
 
-**Open in Colab:** [Launch Notebook](https://colab.research.google.com/)
+**Step 1: Open Google Colab**
+
+1. Visit: https://colab.research.google.com/
+2. Click **File → New notebook**
+3. **Important:** Go to **Runtime → Change runtime type → GPU** (select T4, V100, or A100)
 
 **Cell 1: Setup Environment**
 
 ```python
-# Enable GPU runtime first!
-# Runtime → Change runtime type → GPU (T4/V100/A100)
+# ============================================
+# IMPORTANT: Enable GPU runtime first!
+# Runtime → Change runtime type → GPU
+# ============================================
 
-# Verify GPU
+# Verify GPU is available
 !nvidia-smi
+# Expected output: Tesla T4 (or V100/A100)
 
 # Clone repository
 !git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
@@ -322,7 +628,7 @@ bash scripts/benchmark_all.sh
 !apt-get update
 !apt-get install -y cmake build-essential libomp-dev
 
-# Download CIFAR-10
+# Download CIFAR-10 dataset (~160MB)
 !bash scripts/download_cifar10.sh
 
 # Setup LIBSVM
@@ -337,7 +643,7 @@ bash scripts/benchmark_all.sh
 !mkdir -p build
 %cd build
 
-# Configure for Colab GPU (usually T4 = Compute Capability 7.5)
+# Configure for Colab GPU (T4 = Compute Capability 7.5)
 !cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CUDA_ARCHITECTURES=75
@@ -376,42 +682,112 @@ with open('../results/evaluation_summary.txt', 'r') as f:
     print(f.read())
 ```
 
-**Cell 5: Save to Google Drive**
+**Cell 5: Save to Google Drive (Important for Intel Core i5 users)**
 
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
 
-# Save results
+# Save results to your Google Drive
 !mkdir -p /content/drive/MyDrive/CIFAR10_Results
 !cp -r ../results/* /content/drive/MyDrive/CIFAR10_Results/
 !cp -r ../models/saved_weights/* /content/drive/MyDrive/CIFAR10_Results/
+!cp -r ../data/train_features.txt /content/drive/MyDrive/CIFAR10_Results/
+!cp -r ../data/test_features.txt /content/drive/MyDrive/CIFAR10_Results/
 
-print("Results saved to Google Drive!")
+print("✅ Results saved to Google Drive!")
+print("📂 Location: MyDrive/CIFAR10_Results/")
+print("\nYou can now:")
+print("1. Download features to your local Windows 11 machine")
+print("2. Run SVM training locally (CPU-only, works on Intel Core i5)")
+print("3. View results and confusion matrix")
+```
+
+**Cell 6: Download Results to Local Machine (Alternative)**
+
+```python
+# Or download as ZIP file directly
+!zip -r results.zip ../results ../models/saved_weights ../data/*_features.txt
+from google.colab import files
+files.download('results.zip')
+
+print("✅ Download started!")
+print("Extract on Windows 11 and run SVM training locally")
 ```
 
 ### Colab-Specific Notes
 
 **Runtime Limits:**
 
-- Free tier: 12 hours max session, may disconnect
-- Pro tier: 24 hours, better GPU availability
+- **Free tier:** 12 hours max session, may disconnect after inactivity
+- **Pro tier:** 24 hours, better GPU availability, faster GPUs
+- **Tip:** Save to Google Drive frequently to avoid data loss
 
 **Memory Management:**
 
-- T4 GPU: 15GB VRAM (sufficient for batch_size=64)
-- If OOM error: Reduce batch size to 32
+- **T4 GPU:** 15GB VRAM (sufficient for batch_size=64)
+- **If "CUDA out of memory" error:** Reduce batch size to 32
+  ```python
+  # In Cell 3, modify:
+  !./bin/train_gpu --epochs 20 --batch-size 32  # Reduced from 64
+  ```
 
-**Persistence:**
+**Persistence (Critical for Long Sessions):**
 
-- Save checkpoints to Google Drive every few epochs
-- Download model weights before session ends
+```python
+# Add this cell to save checkpoints every 5 epochs
+# Insert before training cell
 
-**Common Issues:**
+# Modify training command to save checkpoints
+!./bin/train_gpu --epochs 20 --batch-size 64 --save-interval 5
 
-- **"CUDA out of memory":** Reduce batch size
-- **"Session disconnected":** Enable background execution
-- **"No GPU available":** Reset runtime or wait
+# Auto-save to Google Drive every 5 epochs
+# (implement in train_gpu.cu with --checkpoint flag)
+```
+
+**Common Issues & Solutions:**
+
+| Issue                      | Solution                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| **"CUDA out of memory"**   | Reduce `--batch-size` to 32 or 16                                                       |
+| **"Session disconnected"** | Enable background execution: Runtime → Change runtime type → Enable "Run in background" |
+| **"No GPU available"**     | Wait 10-15 minutes, or switch to different GPU type, or upgrade to Colab Pro            |
+| **"Session timeout"**      | Save to Google Drive frequently, reconnect and resume from checkpoint                   |
+| **Build errors**           | Ensure GPU runtime is enabled, run `!nvcc --version` to verify CUDA                     |
+
+### 💡 Workflow for Intel Core i5 Users
+
+**Step-by-Step Guide:**
+
+1. **Phase 1 (CPU Baseline):** Run locally on Windows 11
+
+   ```powershell
+   # On your local machine
+   .\bin\Release\train_cpu.exe --epochs 2
+   ```
+
+2. **Phase 2-4 (GPU Required):** Run on Google Colab
+
+   - Train autoencoder on Colab (Cell 3)
+   - Extract features on Colab (Cell 3)
+   - Save features to Google Drive (Cell 5)
+
+3. **SVM Training:** Download features and run locally
+
+   ```powershell
+   # On your local Windows 11 machine
+   # Download train_features.txt and test_features.txt from Google Drive
+   # Place in: data\ folder
+
+   # Train SVM (CPU-only, works on Intel Core i5)
+   powershell -ExecutionPolicy Bypass -File scripts\train_svm.ps1
+   powershell -ExecutionPolicy Bypass -File scripts\predict_svm.ps1
+   python scripts\evaluate_results.py
+   ```
+
+4. **Results:** View locally on Windows 11
+   - Confusion matrix: `results\confusion_matrix.png`
+   - Accuracy report: `results\evaluation_summary.txt`
 
 ---
 

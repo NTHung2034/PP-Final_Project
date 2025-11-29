@@ -4,6 +4,13 @@
 **Objective:** Apply systematic optimizations to achieve >50× speedup  
 **Prerequisite:** Phase 2 complete, profiling data collected
 
+**⚠️ CRITICAL FOR INTEL CORE i5 USERS:**
+
+- **This phase REQUIRES NVIDIA GPU** - Advanced CUDA optimizations
+- **Recommended:** Use Google Colab with T4/V100/A100 GPU (see Section 7)
+- **Local execution:** Only possible with NVIDIA GPU
+- **All optimization techniques work identically on Colab**
+
 ---
 
 ## Table of Contents
@@ -652,6 +659,8 @@ void AutoencoderGPU::forward_async(const float* d_input, int batch_size,
 
 **Profile with Nsight Systems:**
 
+**Linux/Ubuntu:**
+
 ```bash
 nsys profile -o timeline_streams ./bin/train_gpu_streams
 nsys-ui timeline_streams.qdrep
@@ -661,13 +670,31 @@ nsys-ui timeline_streams.qdrep
 # - GPU utilization >90% (vs ~70% without streams)
 ```
 
+**Windows 11 PowerShell (requires NVIDIA GPU + Nsight Systems):**
+
+```powershell
+# Install Nsight Systems from:
+# https://developer.nvidia.com/nsight-systems
+
+nsys profile -o timeline_streams .\bin\Release\train_gpu_streams.exe
+nsys-ui timeline_streams.qdrep
+
+# Look for:
+# - Overlapping H2D, compute, D2H regions
+# - GPU utilization >90% (vs ~70% without streams)
+```
+
+**⚠️ Intel Core i5 users:** Run profiling on Google Colab (Nsight tools available)
+
 ---
 
 ## 5. Testing and Verification
 
 ### 5.1 Performance Comparison Table
 
-**Create benchmark script:** `scripts/benchmark_all_versions.sh`
+**Create benchmark script:** `scripts/benchmark_all_versions.sh` (Linux) or `scripts/benchmark_all_versions.ps1` (Windows)
+
+**Linux/Ubuntu:**
 
 ```bash
 #!/bin/bash
@@ -699,11 +726,58 @@ speedup=$(echo "scale=2; $time_cpu / $time_streams" | bc)
 echo "GPU_Streams,$time_streams,$speedup"
 ```
 
+**Windows 11 PowerShell:**
+
+```powershell
+# scripts/benchmark_all_versions.ps1
+
+Write-Output "Version,Epoch_Time(s),Speedup"
+
+# CPU baseline
+$output_cpu = .\bin\Release\train_cpu.exe --epochs 1
+$time_cpu = ($output_cpu | Select-String "seconds").Line -replace '.*?(\d+\.\d+).*', '$1'
+Write-Output "CPU,$time_cpu,1.0"
+
+# GPU naive
+$output_naive = .\bin\Release\train_gpu_naive.exe --epochs 1
+$time_naive = ($output_naive | Select-String "seconds").Line -replace '.*?(\d+\.\d+).*', '$1'
+$speedup_naive = [math]::Round($time_cpu / $time_naive, 2)
+Write-Output "GPU_Naive,$time_naive,$speedup_naive"
+
+# GPU tiled
+$output_tiled = .\bin\Release\train_gpu_v1.exe --epochs 1
+$time_tiled = ($output_tiled | Select-String "seconds").Line -replace '.*?(\d+\.\d+).*', '$1'
+$speedup_tiled = [math]::Round($time_cpu / $time_tiled, 2)
+Write-Output "GPU_Tiled,$time_tiled,$speedup_tiled"
+
+# GPU fused
+$output_fused = .\bin\Release\train_gpu_v2.exe --epochs 1
+$time_fused = ($output_fused | Select-String "seconds").Line -replace '.*?(\d+\.\d+).*', '$1'
+$speedup_fused = [math]::Round($time_cpu / $time_fused, 2)
+Write-Output "GPU_Fused,$time_fused,$speedup_fused"
+
+# GPU streams (optional)
+$output_streams = .\bin\Release\train_gpu_v3.exe --epochs 1
+$time_streams = ($output_streams | Select-String "seconds").Line -replace '.*?(\d+\.\d+).*', '$1'
+$speedup_streams = [math]::Round($time_cpu / $time_streams, 2)
+Write-Output "GPU_Streams,$time_streams,$speedup_streams"
+```
+
 **Run:**
+
+**Linux:**
 
 ```bash
 bash scripts/benchmark_all_versions.sh > results/performance_comparison.csv
 ```
+
+**Windows PowerShell:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\benchmark_all_versions.ps1 | Out-File results\performance_comparison.csv
+```
+
+**⚠️ Intel Core i5 users:** Run benchmarks on Google Colab
 
 ### 5.2 Correctness Tests
 
@@ -817,16 +891,38 @@ For your report, answer:
 
 ## 7. Google Colab Notes
 
+### 🎯 RECOMMENDED FOR INTEL CORE i5 USERS
+
+**All Phase 3 optimizations work perfectly on Google Colab's free T4 GPU.**
+
 ### 7.1 Checking GPU Capabilities
 
 ```python
 !nvidia-smi --query-gpu=name,compute_cap,memory.total --format=csv
 
 # T4: Compute Capability 7.5, 16 GB
+# V100: Compute Capability 7.0, 16-32 GB
+# A100: Compute Capability 8.0, 40-80 GB
 # Shared memory per block: 48 KB (default), 96 KB (max)
 ```
 
 ### 7.2 Compiling with Correct Architecture
+
+**CMake approach (recommended):**
+
+```python
+# Rebuild optimized version for T4 GPU
+%cd /content/PP-Final_Project/build
+!cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=75
+!make -j4
+
+# Run all optimized versions
+!./bin/train_gpu_v1 --epochs 20  # Shared memory tiling
+!./bin/train_gpu_v2 --epochs 20  # + Kernel fusion
+!./bin/train_gpu_v3 --epochs 20  # + Multi-stream (optional)
+```
+
+**Direct nvcc approach:**
 
 ```bash
 # For T4 (Compute Capability 7.5)
@@ -842,18 +938,66 @@ nvcc -arch=sm_80 -O3 ...
 ### 7.3 Running Profiler on Colab
 
 ```python
-# Install Nsight Compute (if not available)
-!apt-get install -y nsight-compute
+# Profile optimized kernels
+!ncu --set full -o profile_v2 ./bin/train_gpu_v2 --epochs 1
 
-# Profile
-!ncu --set full -o profile ./bin/train_gpu_v2
-
-# Download profile file
+# Download profile file to analyze locally
 from google.colab import files
-files.download('profile.ncu-rep')
+files.download('profile_v2.ncu-rep')
 
-# Open on local machine with ncu-ui
+# Open on local machine with Nsight Compute UI
+# Download from: https://developer.nvidia.com/nsight-compute
 ```
+
+### 7.4 Benchmark All Versions
+
+```python
+# Run comprehensive benchmark
+!bash ../scripts/benchmark_all_versions.sh > ../results/performance_comparison.csv
+
+# Display results
+import pandas as pd
+df = pd.read_csv('../results/performance_comparison.csv')
+print(df)
+
+# Expected output on T4 GPU:
+#      Version  Epoch_Time(s)  Speedup
+# 0        CPU        1080.0      1.0
+# 1  GPU_Naive         150.0      7.2
+# 2  GPU_Tiled          45.0     24.0
+# 3  GPU_Fused          28.0     38.5
+# 4 GPU_Streams         20.0     54.0
+```
+
+### 7.5 Save Results to Google Drive
+
+```python
+# Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Save all results
+!mkdir -p /content/drive/MyDrive/PP_Project_Phase3
+!cp -r ../models/saved_weights/* /content/drive/MyDrive/PP_Project_Phase3/
+!cp ../results/performance_comparison.csv /content/drive/MyDrive/PP_Project_Phase3/
+
+print("✅ Phase 3 complete!")
+print("📊 Achieved 50-80× speedup vs CPU baseline")
+print("💾 All results saved to Google Drive")
+```
+
+### 7.6 Intel Core i5 Complete Workflow
+
+**For users without NVIDIA GPU:**
+
+1. ✅ **Phase 1:** Ran CPU baseline locally (~18 min/epoch)
+2. ✅ **Phase 2:** Ran naive GPU on Colab (~2.5 min/epoch)
+3. ✅ **Phase 3:** Ran optimized GPU on Colab (~20-30 sec/epoch)
+4. ⏭️ **Phase 4:** Next steps:
+   - Extract features on Colab (GPU)
+   - Download features to Windows 11
+   - Train SVM locally (CPU-only, works fine)
+   - Generate results and confusion matrix
 
 ---
 

@@ -193,11 +193,23 @@ int main() {
 
 **Run:**
 
+**Linux/Ubuntu/macOS:**
+
 ```bash
 mkdir build && cd build
 cmake ..
 make test_data_loading
 ./bin/test_data_loading
+```
+
+**Windows 11 PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release --target test_data_loading
+.\bin\Release\test_data_loading.exe
 ```
 
 **Expected output:**
@@ -850,10 +862,24 @@ int w_idx = ((oc * in_c + ic) * k + kh) * k + kw;
 
 ❌ **Pitfall:** Memory leaks
 
-- **Solution:** Use RAII, smart pointers, valgrind
+- **Solution:** Use RAII, smart pointers, memory checking tools
+
+**Linux/Ubuntu/macOS:**
 
 ```bash
 valgrind --leak-check=full ./bin/train_cpu
+```
+
+**Windows 11 PowerShell:**
+
+```powershell
+# Use Visual Studio's built-in memory profiler
+# Or use Dr. Memory (free alternative to Valgrind)
+winget install DrMemory.DrMemory
+drmemory -- .\bin\Release\train_cpu.exe
+
+# Or use Windows Performance Analyzer
+# Debug in Visual Studio with Memory Diagnostics enabled
 ```
 
 ---
@@ -893,7 +919,26 @@ target_compile_options(train_cpu PRIVATE
 
 ## 6. Google Colab Notes
 
-### 6.1 Setup on Colab
+### 💡 For Intel Core i5 Users
+
+**Phase 1 (CPU Baseline) can run on your local Windows 11 machine:**
+
+- ✅ No NVIDIA GPU required for this phase
+- ✅ Works on Intel Core i5 with integrated graphics
+- ✅ Expected performance: 15-20 min/epoch (acceptable)
+- ⚠️ For Phase 2-4 (GPU required), you MUST use Google Colab
+
+**To run locally on Windows 11 (Intel Core i5):**
+
+```powershell
+# Follow the build instructions above, then:
+cd build
+.\bin\Release\train_cpu.exe --epochs 5
+```
+
+### 6.1 Setup on Colab (Optional for Phase 1)
+
+**Note:** Phase 1 can run on CPU, so Colab is optional here. However, if you prefer cloud execution:
 
 **Cell 1: Install dependencies**
 

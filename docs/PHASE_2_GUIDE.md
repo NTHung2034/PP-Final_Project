@@ -4,6 +4,13 @@
 **Objective:** Port CPU implementation to GPU with basic parallelization  
 **Prerequisite:** Phase 1 complete, CUDA Toolkit installed
 
+**⚠️ CRITICAL FOR INTEL CORE i5 USERS:**
+
+- **This phase REQUIRES NVIDIA GPU** - Cannot run on Intel integrated graphics
+- **Recommended:** Use Google Colab (see Section 6 below)
+- **Local execution:** Only possible with NVIDIA GPU (GTX 1660+, RTX series, etc.)
+- **If no NVIDIA GPU:** Skip to "Google Colab Notes" section for cloud-based setup
+
 ---
 
 ## Table of Contents
@@ -187,9 +194,31 @@ int main() {
 
 **Build and run:**
 
+**Linux/Ubuntu:**
+
 ```bash
 nvcc -o test_gpu_memory tests/test_gpu_memory.cu -I include
 ./test_gpu_memory
+```
+
+**Windows 11 PowerShell (requires NVIDIA GPU + CUDA Toolkit):**
+
+```powershell
+# Using nvcc directly
+nvcc -o test_gpu_memory.exe tests\test_gpu_memory.cu -I include
+.\test_gpu_memory.exe
+
+# Or build with CMake
+cd build
+cmake --build . --config Release --target test_gpu_memory
+.\bin\Release\test_gpu_memory.exe
+```
+
+**⚠️ Intel Core i5 without NVIDIA GPU:**
+
+```powershell
+# This will fail with "no CUDA-capable device found"
+# Use Google Colab instead (see section 6 below)
 ```
 
 ---
@@ -832,10 +861,25 @@ void test_gpu_correctness() {
 
 ### 3.2 Memory Leak Check
 
+**Linux/Ubuntu:**
+
 ```bash
 # Use cuda-memcheck to detect memory errors
 cuda-memcheck --leak-check full ./bin/train_gpu
 ```
+
+**Windows 11 PowerShell (requires NVIDIA GPU):**
+
+```powershell
+# Use cuda-memcheck (included with CUDA Toolkit)
+cuda-memcheck --leak-check full .\bin\Release\train_gpu.exe
+
+# Or use NVIDIA Nsight Compute for detailed profiling
+# Install from: https://developer.nvidia.com/nsight-compute
+ncu --set full .\bin\Release\train_gpu.exe
+```
+
+**⚠️ Intel Core i5 users:** Run this on Google Colab instead
 
 **Expected:** No memory leaks, no out-of-bounds accesses
 
@@ -1012,49 +1056,118 @@ printf("Kernel time: %.3f ms\n", ms);
 
 ## 6. Google Colab Notes
 
+### 🎯 REQUIRED FOR INTEL CORE i5 USERS
+
+**If you don't have an NVIDIA GPU, this is your PRIMARY option for Phase 2.**
+
 ### 6.1 Enable GPU Runtime
 
-1. **Runtime → Change runtime type**
-2. **Hardware accelerator → GPU**
-3. **GPU type → T4** (free tier) or **V100/A100** (Pro)
+1. Go to **Runtime → Change runtime type**
+2. Select **Hardware accelerator → GPU**
+3. Choose **GPU type → T4** (free tier) or **V100/A100** (Colab Pro)
+4. Click **Save**
 
 ### 6.2 Check CUDA Installation
 
 ```python
+# Verify GPU is available
 !nvidia-smi
+
+# Check CUDA version
 !nvcc --version
 ```
 
 **Expected output:**
 
 ```
+Tesla T4 (or V100/A100)
 NVIDIA-SMI 525.x.x       Driver Version: 525.x.x       CUDA Version: 12.0
 ```
+
+**⚠️ If you see "No CUDA-capable device detected":**
+
+- Runtime was not changed to GPU
+- Go back to step 6.1 and enable GPU runtime
 
 ### 6.3 Build on Colab
 
 ```python
+# Clone repository
 !git clone https://github.com/YOUR_USERNAME/PP-Final_Project.git
 %cd PP-Final_Project
+
+# Download CIFAR-10
+!bash scripts/download_cifar10.sh
+
+# Setup LIBSVM
+!cd external && git clone https://github.com/cjlin1/libsvm.git
+!cd external/libsvm && make
 
 # Build with CUDA support
 !mkdir -p build
 %cd build
+
+# T4 GPU = Compute Capability 7.5
+# V100 = 7.0, A100 = 8.0
 !cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=75
+
+# Build (use -j4 to avoid timeout)
 !make -j4
 
-# Run GPU training
-!./bin/train_gpu
+# Verify GPU is detected
+!./bin/check_gpu
 ```
 
-**Note:** T4 GPU is Compute Capability 7.5, V100 is 7.0, A100 is 8.0
-
-### 6.4 Monitor GPU Usage
+### 6.4 Run GPU Training on Colab
 
 ```python
-# In a separate cell, run periodically
-!nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv
+# Run GPU training
+!./bin/train_gpu --epochs 20 --batch-size 64
+
+# Expected: ~20-30 sec/epoch on T4 GPU
+# Output: models/saved_weights/gpu_encoder_weights.bin
 ```
+
+### 6.5 Monitor GPU Usage
+
+```python
+# In a separate cell, run periodically to monitor
+!nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv
+
+# Expected during training:
+# GPU Utilization: 80-95%
+# Memory Used: ~2-3 GB (out of 15 GB on T4)
+```
+
+### 6.6 Save Results to Google Drive
+
+```python
+# Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Save trained weights
+!mkdir -p /content/drive/MyDrive/PP_Project_Phase2
+!cp -r ../models/saved_weights/* /content/drive/MyDrive/PP_Project_Phase2/
+
+print("✅ Weights saved to Google Drive!")
+```
+
+### 6.7 Intel Core i5 Workflow Summary
+
+**Complete workflow for users without NVIDIA GPU:**
+
+1. **Phase 1:** Run CPU baseline locally on Windows 11 (completed)
+2. **Phase 2:** Run on Google Colab (follow steps above)
+3. **Phase 3:** Continue on Google Colab (optimizations)
+4. **Phase 4:** Extract features on Colab, download, run SVM locally
+
+**Benefits:**
+
+- ✅ Free GPU access (T4 = 15GB VRAM)
+- ✅ Pre-configured CUDA environment
+- ✅ No local CUDA installation needed
+- ✅ Can download results and continue locally
 
 ---
 
