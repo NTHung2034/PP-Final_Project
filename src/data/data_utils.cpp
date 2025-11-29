@@ -1,4 +1,5 @@
 #include "data/data_utils.h"
+#include "utils/logger.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -25,7 +26,7 @@ namespace DataUtils {
         for (size_t i = 0; i < total_elements; ++i) {
             sum += data[i];
         }
-        float mean = sum / total_elements;
+        float mean = static_cast<float>(sum / total_elements);
         
         // Compute std dev
         double sq_sum = 0.0;
@@ -34,12 +35,12 @@ namespace DataUtils {
             float diff = data[i] - mean;
             sq_sum += diff * diff;
         }
-        float std = std::sqrt(sq_sum / total_elements);
+        float std_dev = std::sqrt(static_cast<float>(sq_sum / total_elements));
         
         // Apply standardization
         #pragma omp parallel for simd schedule(static)
         for (size_t i = 0; i < total_elements; ++i) {
-            data[i] = (data[i] - mean) / (std + 1e-7f); // Add epsilon for stability
+            data[i] = (data[i] - mean) / (std_dev + 1e-7f); // Add epsilon for stability
         }
     }
 
@@ -50,13 +51,13 @@ namespace DataUtils {
         }
         
         // Write shape
-        int ndim = tensor.shape.size();
-        file.write(reinterpret_cast<char*>(&ndim), sizeof(int));
-        file.write(reinterpret_cast<char*>(&tensor.shape[0]), ndim * sizeof(int));
+        int ndim = static_cast<int>(tensor.shape.size());
+        file.write(reinterpret_cast<const char*>(&ndim), sizeof(int));
+        file.write(reinterpret_cast<const char*>(tensor.shape.data()), ndim * sizeof(int));
         
         // Write data
-        file.write(reinterpret_cast<char*>(tensor.data->data()), 
-                tensor.size() * sizeof(float));
+        file.write(reinterpret_cast<const char*>(tensor.data->data()), 
+                static_cast<std::streamsize>(tensor.size() * sizeof(float)));
         
         file.close();
         LOG_INFO("Tensor saved to %s", filepath.c_str());
@@ -72,14 +73,14 @@ namespace DataUtils {
         int ndim;
         file.read(reinterpret_cast<char*>(&ndim), sizeof(int));
         std::vector<int> shape(ndim);
-        file.read(reinterpret_cast<char*>(&shape[0]), ndim * sizeof(int));
+        file.read(reinterpret_cast<char*>(shape.data()), ndim * sizeof(int));
         
         // Create tensor
         Tensor tensor(shape, false);
         
         // Read data
         file.read(reinterpret_cast<char*>(tensor.data->data()), 
-                tensor.size() * sizeof(float));
+                static_cast<std::streamsize>(tensor.size() * sizeof(float)));
         
         file.close();
         return tensor;

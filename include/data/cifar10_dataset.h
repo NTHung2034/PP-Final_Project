@@ -1,5 +1,6 @@
 #pragma once
 #include "data_types.h"
+#include "config.h"
 #include <string>
 #include <vector>
 #include <random>
@@ -49,8 +50,8 @@ private:
     size_t current_index_ = 0;
     
     // Configuration
-    Mode mode_;
     std::string data_root_;
+    Mode mode_;
     size_t num_images_ = 0;
     bool is_loaded_ = false;
     

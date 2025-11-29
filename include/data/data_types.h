@@ -36,14 +36,19 @@ struct Tensor {
     std::vector<int> strides;                  // Strides for each dimension
     std::shared_ptr<AlignedBuffer<float>> data; // Aligned memory buffer
     
+    // Default constructor (creates empty tensor)
+    Tensor() : shape(), strides(), data(nullptr) {}
+    
     // Constructor
     Tensor(const std::vector<int>& dims, bool zero_init = true) 
         : shape(dims), data(nullptr) {
         // Calculate strides
         strides.resize(dims.size());
-        strides.back() = 1;
-        for (int i = dims.size() - 2; i >= 0; --i) {
-            strides[i] = strides[i + 1] * dims[i + 1];
+        if (!dims.empty()) {
+            strides.back() = 1;
+            for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i) {
+                strides[i] = strides[i + 1] * dims[i + 1];
+            }
         }
         
         // Allocate memory

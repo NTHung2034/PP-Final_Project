@@ -1,1 +1,36 @@
 .prompts
+
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dylib
+bin/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files (too large for git)
+data/cifar-10-batches-bin/
+data/*.bin
+data/*.tar.gz
+
+# Model weights
+models/saved_weights/*.bin
+
+# External libraries (should be downloaded)
+external/libsvm/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp

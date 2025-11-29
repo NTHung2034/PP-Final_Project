@@ -1,8 +1,10 @@
 #include "data/cifar10_dataset.h"
 #include "utils/logger.h"
+#include "config.h"
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include <chrono>
 
 CIFAR10Dataset::CIFAR10Dataset(const std::string& data_root, Mode mode) 
     : data_root_(data_root), mode_(mode), rng_(RANDOM_SEED) {
@@ -45,7 +47,7 @@ void CIFAR10Dataset::load_data() {
         const std::vector<std::string> batch_files = TRAIN_BATCH_FILES;
         const int images_per_batch = CIFAR_TRAIN_IMAGES / batch_files.size();
         
-        for (int i = 0; i < batch_files.size(); ++i) {
+        for (size_t i = 0; i < batch_files.size(); ++i) {
             std::string filepath = data_root_ + "/" + batch_files[i];
             load_batch(filepath, i * images_per_batch);
         }
@@ -66,13 +68,25 @@ void CIFAR10Dataset::load_data() {
 }
 
 void CIFAR10Dataset::load_batch(const std::string& filename, int start_idx) {
+    /**
+     * CIFAR-10 Binary Format:
+     * - Each image record: 1 byte label + 3072 bytes pixel data
+     * - Pixel data is stored in PLANAR format: 1024 red, then 1024 green, then 1024 blue
+     * - Each color channel is stored row-by-row (row-major)
+     * - Pixel values are uint8 in range [0, 255]
+     * 
+     * Reference: https://www.cs.toronto.edu/~kriz/cifar.html
+     * "The first byte is the label of the first image... The next 3072 bytes 
+     *  are the values of the pixels of the image. The first 1024 bytes are 
+     *  the red channel values, the next 1024 the green, and the final 1024 the blue."
+     */
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open file: " + filename);
     }
     
     const int record_size = 1 + CIFAR_PIXELS; // 1 byte label + 3072 bytes image
-    const int batch_size = (mode_ == Mode::TRAIN) ? 10000 : 10000; // Each file has 10K images
+    const int batch_size = 10000; // Each CIFAR-10 file contains exactly 10,000 images
     
     std::vector<uint8_t> buffer(record_size);
     
@@ -83,15 +97,20 @@ void CIFAR10Dataset::load_batch(const std::string& filename, int start_idx) {
         // Extract label (first byte)
         labels_[start_idx + i] = buffer[0];
         
-        // Extract and normalize image
+        // Extract and normalize image data
+        // CIFAR-10 binary is already in NCHW planar format (channel-first)
+        // Buffer layout: [label, R0..R1023, G0..G1023, B0..B1023]
         float* img_ptr = images_->data->data() + (start_idx + i) * CIFAR_PIXELS;
         
-        // Convert from NHWC (file format) to NCHW (our format)
         for (int c = 0; c < CIFAR_CHANNELS; ++c) {
             for (int h = 0; h < CIFAR_IMAGE_SIZE; ++h) {
                 for (int w = 0; w < CIFAR_IMAGE_SIZE; ++w) {
-                    int src_idx = 1 + (h * CIFAR_IMAGE_SIZE + w) * CIFAR_CHANNELS + c;
-                    int dst_idx = (c * CIFAR_IMAGE_SIZE + h) * CIFAR_IMAGE_SIZE + w;
+                    // Source: buffer offset = 1 (skip label) + channel*1024 + h*32 + w
+                    int src_idx = 1 + c * (CIFAR_IMAGE_SIZE * CIFAR_IMAGE_SIZE) + h * CIFAR_IMAGE_SIZE + w;
+                    // Destination: NCHW format = c*1024 + h*32 + w
+                    int dst_idx = c * (CIFAR_IMAGE_SIZE * CIFAR_IMAGE_SIZE) + h * CIFAR_IMAGE_SIZE + w;
+                    
+                    // Normalize [0, 255] to [0, 1]
                     img_ptr[dst_idx] = static_cast<float>(buffer[src_idx]) / 255.0f;
                 }
             }
@@ -103,6 +122,7 @@ void CIFAR10Dataset::load_batch(const std::string& filename, int start_idx) {
 
 void CIFAR10Dataset::normalize_image(float* image) {
     // In-place normalization [0, 255] -> [0, 1]
+    // Note: This is already done during load_batch, kept for backward compatibility
     for (int i = 0; i < CIFAR_PIXELS; ++i) {
         image[i] = image[i] / 255.0f;
     }
@@ -144,14 +164,19 @@ Tensor CIFAR10Dataset::get_batch(int batch_size) {
 }
 
 std::vector<int> CIFAR10Dataset::get_batch_labels(int batch_size) {
+    if (!is_loaded_) {
+        throw std::runtime_error("Dataset not loaded. Call load_data() first.");
+    }
+    
+    // Get labels for the PREVIOUS batch (after current_index_ was advanced)
     int actual_batch_size = std::min(batch_size, 
-                                     static_cast<int>(num_images_ - current_index_));
+                                     static_cast<int>(current_index_));
     
     std::vector<int> batch_labels(actual_batch_size);
     
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < actual_batch_size; ++i) {
-        size_t img_idx = shuffled_indices_[current_index_ + i - actual_batch_size];
+        size_t img_idx = shuffled_indices_[current_index_ - actual_batch_size + i];
         batch_labels[i] = labels_[img_idx];
     }
     
