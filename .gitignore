@@ -1,5 +1,5 @@
 .prompts
 
-data/cifar-10-binary
+data/cifar-10-batches-bin
 
 build

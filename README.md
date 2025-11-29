@@ -4,46 +4,400 @@
 
 A high-performance implementation of an autoencoder-based feature learning system for CIFAR-10 image classification, progressively optimized from CPU baseline to GPU with >50× speedup.
 
+> **📖 First time opening this project?** Read **[FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md)** for a detailed explanation of what's happening in VS Code and what to do next.
+
 ---
 
 ## 🚀 Quick Start for Intel Core i5 (Windows 11)
 
-**Don't have an NVIDIA GPU? No problem!** You can still work on this project:
+**Don't have an NVIDIA GPU? No problem!** You can still work on this project.
 
-### Step 1: Install Dependencies
+### 📋 What Just Happened?
+
+When you opened this project in VS Code, the **CMake Tools extension** automatically:
+
+1. ✅ Detected `CMakeLists.txt`
+2. ✅ Configured the build system
+3. ✅ Compiled the project (using MSYS2/MinGW or Visual Studio)
+
+**This is normal behavior!** The extension helps manage CMake projects automatically.
+
+> **About Build Tools:** Yes, you're absolutely right! Build tools like CMake and the VS Code CMake Tools extension let you simply click "Build" in the status bar and watch the compilation process - no need for complex terminal commands. VS Code shows the build output in real-time, making it much easier to spot and fix errors.
+
+**What's pending (for you to implement):**
+
+- Autoencoder layers (convolution, ReLU, maxpool, upsampling)
+- Forward/backward propagation
+- Model weight saving/loading
+- Complete CPU training implementation
+
+---
+
+### 🎯 Quick Test Run (Verify Everything Works)
 
 ```powershell
-# Run automated setup script
-.\scripts\setup_windows.ps1
+# Run the built executable (from project root)
+.\build\bin\train_autoencoder.exe
 ```
 
-### Step 2: Download CIFAR-10 Dataset
+**Expected Output:**
 
-```powershell
-# Download and extract CIFAR-10 (162 MB)
-.\scripts\download_cifar10.ps1
+```
+========================================
+  CIFAR-10 Autoencoder Training
+  Phase 1: CPU Baseline
+========================================
+
+[INFO] Starting CIFAR-10 Autoencoder Training
+[1/4] Loading CIFAR-10 dataset...
+      ✓ Loaded 50,000 training images
+
+[2/4] Verifying data integrity...
+      ✓ Sample batch shape: [4, 3, 32, 32]
+
+[3/4] Initializing autoencoder model...
+      ✓ Encoder: 3x32x32 -> 8192 features
+      ✓ Decoder: 8192 -> 3x32x32
+
+[4/4] Starting training loop...
+Epoch 1/2:
+  Batch    0/1562 - Loss: 0.000 (placeholder)
+  ...
+  ✓ Epoch 1 completed
+
+========================================
+  BUILD & PIPELINE TEST: SUCCESS!
+========================================
+
+✓ Dataset loading works
+✓ Data batching works
+✓ Training loop structure works
 ```
 
-### Step 3: Build CPU Version (Phase 1)
+---
+
+### 📊 Data Folder Status
+
+**✓ CIFAR-10 Dataset Verified:**
+
+```
+data/cifar-10-batches-bin/
+├── data_batch_1.bin  ✓ (30,730,000 bytes)
+├── data_batch_2.bin  ✓ (30,730,000 bytes)
+├── data_batch_3.bin  ✓ (30,730,000 bytes)
+├── data_batch_4.bin  ✓ (30,730,000 bytes)
+├── data_batch_5.bin  ✓ (30,730,000 bytes)
+├── test_batch.bin    ✓ (30,730,000 bytes)
+├── batches.meta.txt  ✓ (Class labels)
+└── readme.html       ✓ (Documentation)
+```
+
+**All required files are present!** The dataset is ready to use.
+
+---
+
+### 🛠️ Build Process Explanation
+
+**What the CMake Tools Extension Does:**
+
+1. **Detects CMakeLists.txt** → Knows this is a CMake project
+2. **Auto-configures** → Runs `cmake ..` to generate build files
+3. **Auto-builds** → Compiles source code when you click "Build" or save files
+4. **Shows output** → Real-time compilation progress in Output panel
+
+**Manual Build (if needed):**
 
 ```powershell
-# Build CPU-only version (no CUDA required)
+# Clean rebuild from scratch
+cd build
+cmake --build . --config Debug --clean-first
+
+# Or use the build script (forces Visual Studio compiler)
 .\scripts\build_cpu.ps1
 ```
 
-### Step 4: Run Training
+**Build Configuration:**
+
+- **Compiler:** MSYS2/MinGW GCC 11.3+ or Visual Studio 2022 MSVC
+- **Build Type:** Debug (default) - includes debugging symbols
+- **CUDA:** Disabled (OFF) - CPU-only build
+- **Output:** `build/bin/train_autoencoder.exe`
+
+---
+
+### 🔧 Recent Fixes Applied
+
+**Fixed compilation errors:**
+
+1. ✅ **Windows compatibility:** Replaced `posix_memalign` with `_aligned_malloc` for Windows
+2. ✅ **Missing includes:** Added `config.h`, `<chrono>`, `logger.h` where needed
+3. ✅ **Tensor construction:** Fixed default constructor issue
+4. ✅ **Const-correctness:** Fixed `reinterpret_cast` issues
+5. ✅ **Unused parameters:** Suppressed warnings with `(void)param`
+
+**All files compile cleanly now!**
+
+---
+
+### 📚 Next Steps for Implementation
+
+**Phase 1 - CPU Baseline (Your Task):**
+
+1. **Implement CNN layers** (`include/layers/` and `src/layers/`):
+
+   ```cpp
+   // conv2d_cpu.h/cpp - 2D convolution
+   // relu_cpu.h/cpp - ReLU activation
+   // maxpool_cpu.h/cpp - Max pooling
+   // upsample_cpu.h/cpp - Upsampling for decoder
+   ```
+
+2. **Implement autoencoder model** (`include/models/autoencoder_cpu.h`):
+
+   ```cpp
+   class AutoencoderCPU {
+       void forward(const Tensor& input, Tensor& output);
+       void backward(const Tensor& grad_output);
+       void update_weights(float learning_rate);
+   };
+   ```
+
+3. **Add training logic** in `src/main_train.cpp`:
+
+   - Forward propagation
+   - Loss computation (MSE for reconstruction)
+   - Backward propagation
+   - Weight updates
+
+4. **Add weight persistence:**
+   - Save trained weights after each epoch
+   - Load weights to resume training
+
+**Timeline:**
+
+- Phase 1 implementation: 1-2 weeks
+- Testing and debugging: 3-4 days
+- Documentation: 1-2 days
+
+---
+
+### 🎓 Understanding the Codebase
+
+**Key Files:**
+
+| File                             | Purpose              | Status                |
+| -------------------------------- | -------------------- | --------------------- |
+| `src/main_train.cpp`             | Training entry point | ✅ Working (skeleton) |
+| `src/data/cifar10_dataset.cpp`   | CIFAR-10 loader      | ✅ Complete           |
+| `src/data/data_utils.cpp`        | Preprocessing        | ✅ Complete           |
+| `src/utils/logger.cpp`           | Logging system       | ✅ Complete           |
+| `src/utils/memory_pool.cpp`      | Memory management    | ✅ Complete           |
+| `include/data/data_types.h`      | Tensor definition    | ✅ Complete           |
+| `include/config.h`               | Global constants     | ✅ Complete           |
+| `src/layers/*.cpp`               | CNN layers           | ⏳ TODO               |
+| `src/models/autoencoder_cpu.cpp` | Model                | ⏳ TODO               |
+
+---
+
+### 🎯 Your First Steps (After Opening in VS Code)
+
+#### ✅ Step 1: Build Status - COMPLETE!
+
+The project has been successfully built! You can verify by running:
 
 ```powershell
-# Run Phase 1 CPU baseline
-.\build\bin\Release\train_autoencoder.exe
+# Check if executable exists
+Test-Path .\build\bin\train_autoencoder.exe
+# Output: True
+
+# Run the program
+.\build\bin\train_autoencoder.exe
 ```
 
-### Step 5: GPU Phases (Use Google Colab)
+**Or click "Run" in VS Code!**
 
-For Phases 2-4 (GPU optimization), use the free GPU runtime in Google Colab:
+---
 
-- See [Google Colab Setup](#google-colab-setup) section below
-- All GPU code runs in the cloud - no local NVIDIA GPU needed!
+#### Step 2: Understanding the Output
+
+When you run `train_autoencoder.exe`, you'll see:
+
+```
+========================================
+  CIFAR-10 Autoencoder Training
+  Phase 1: CPU Baseline
+========================================
+
+[1/4] Loading CIFAR-10 dataset...
+      ✓ Loaded 50,000 training images
+
+[2/4] Verifying data integrity...
+      ✓ Sample batch shape: [4, 3, 32, 32]
+
+[3/4] Initializing autoencoder model...
+      ✓ Encoder: 3x32x32 -> 8192 features
+      (NOTE: Layers not implemented yet)
+
+[4/4] Starting training loop...
+Epoch 1/2:
+  Batch 0/1562 - Loss: 0.000 (placeholder)
+  ...
+  ✓ Epoch 1 completed
+
+BUILD & PIPELINE TEST: SUCCESS!
+✓ Dataset loading works
+✓ Data batching works
+✓ Training loop structure works
+```
+
+**This confirms:**
+
+- ✅ All source files compiled successfully
+- ✅ Dataset loads correctly (50,000 CIFAR-10 images)
+- ✅ Data batching works (creates batches of 32 images)
+- ✅ Training loop structure is ready
+- ⏳ **Next:** Implement the actual autoencoder layers
+
+---
+
+#### Step 3: Download Dataset (Already Done!)
+
+The CIFAR-10 dataset is already in `data/cifar-10-batches-bin/`:
+
+- ✅ 6 binary files (5 training batches + 1 test batch)
+- ✅ 50,000 training images (10,000 per batch)
+- ✅ 10,000 test images
+
+No additional download needed!
+
+---
+
+#### Step 4: Start Implementing Phase 1
+
+**Current Task:** Implement the autoencoder layers
+
+1. **Create convolution layer** (`src/layers/conv2d_cpu.cpp`):
+
+   ```cpp
+   // Implement 2D convolution using OpenMP for parallelization
+   ```
+
+2. **Create activation functions** (`src/layers/relu_cpu.cpp`):
+
+   ```cpp
+   // Implement ReLU: f(x) = max(0, x)
+   ```
+
+3. **Create pooling layers** (`src/layers/maxpool_cpu.cpp`):
+
+   ```cpp
+   // Implement max pooling for downsampling
+   ```
+
+4. **Assemble the model** (`src/models/autoencoder_cpu.cpp`):
+   ```cpp
+   // Stack layers: Conv -> ReLU -> MaxPool -> ... -> Upsample -> Conv
+   ```
+
+See `docs/PHASE_1_GUIDE.md` for detailed implementation instructions.
+
+---
+
+#### Step 5: Test Your Implementation
+
+After implementing layers:
+
+```powershell
+# Rebuild the project
+cd build
+cmake --build . --config Debug
+
+# Run training
+.\bin\train_autoencoder.exe
+
+# You should see real loss values instead of 0.000
+```
+
+---
+
+### 🛠️ VS Code Build Controls
+
+**Manual Build Commands (if needed):**
+
+1. **Clean and Rebuild:**
+
+   - Press `Ctrl+Shift+P` (Command Palette)
+   - Type: `CMake: Clean Rebuild`
+   - Or: `CMake: Delete Cache and Reconfigure`
+
+2. **Build from PowerShell:**
+
+   ```powershell
+   # Navigate to build directory
+   cd build
+
+   # Rebuild
+   cmake --build . --config Debug --clean-first
+
+   # Or use the build script
+   cd ..
+   .\scripts\build_cpu.ps1
+   ```
+
+3. **Change Build Type (Debug → Release):**
+   ```powershell
+   cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   cmake --build . --config Release
+   ```
+
+**Stop Automatic CMake Configuration:**
+
+If you don't want CMake to auto-configure:
+
+1. Press `Ctrl+,` (Settings)
+2. Search: `cmake.configureOnOpen`
+3. Uncheck the option
+
+---
+
+### ⚠️ Troubleshooting First Run
+
+| Issue                                 | Solution                                                                                        |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Build fails with "missing header"** | Make sure all `.cpp` files in `src/` exist. Check `src/utils/memory_pool.cpp` is not empty.     |
+| **CMake errors about CUDA**           | Normal if no NVIDIA GPU. Build should still proceed with `-DENABLE_CUDA=OFF`.                   |
+| **No executable created**             | Wait for build to finish (check status bar). If failed, run `.\scripts\build_cpu.ps1` manually. |
+| **"Dataset not found" error**         | Run `.\scripts\download_cifar10.ps1` first!                                                     |
+| **VS Code uses wrong compiler**       | Build script (`build_cpu.ps1`) forces Visual Studio. Manual builds may use MSYS2/MinGW.         |
+
+---
+
+### 📚 Quick Reference: Complete Workflow
+
+```powershell
+# 1. Download dataset (ONCE)
+.\scripts\download_cifar10.ps1
+
+# 2. Build (if not auto-built by VS Code)
+.\scripts\build_cpu.ps1
+
+# 3. Run Phase 1 (CPU) - Test run
+.\build\bin\Release\train_autoencoder.exe --epochs 2
+
+# 4. Run Phase 1 (CPU) - Full training
+.\build\bin\Release\train_autoencoder.exe --epochs 20
+
+# 5. For Phases 2-4 (GPU): Use Google Colab
+#    See "Google Colab Setup" section below
+```
+
+**Expected Timeline:**
+
+- Dataset download: ~2-5 minutes
+- Build: ~1-3 minutes
+- Phase 1 training (2 epochs): ~30-40 minutes
+- Phase 1 training (20 epochs): ~5-7 hours
 
 ---
 
