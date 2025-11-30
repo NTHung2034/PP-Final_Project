@@ -480,10 +480,10 @@ Tensor Conv2DCPU::forward(const Tensor& input) {
 **Constructor with Xavier Initialization:**
 
 ```cpp
-Conv2DCPU::Conv2DCPU(int in_channels, int out_channels, int kernel_size, 
+Conv2DCPU::Conv2DCPU(int in_channels, int out_channels, int kernel_size,
                      int stride, int padding)
-    : in_c_(in_channels), out_c_(out_channels), k_size_(kernel_size), 
-      stride_(stride), pad_(padding) 
+    : in_c_(in_channels), out_c_(out_channels), k_size_(kernel_size),
+      stride_(stride), pad_(padding)
 {
     // Initialize weights and biases with Xavier/He initialization
     int weight_size = out_c_ * in_c_ * k_size_ * k_size_;
@@ -575,7 +575,7 @@ Tensor Conv2DCPU::backward(const Tensor& grad_output) {
 **Weight Management Functions:**
 
 ```cpp
-void Conv2DCPU::set_weight(const std::vector<float>& weights, 
+void Conv2DCPU::set_weight(const std::vector<float>& weights,
                            const std::vector<float>& bias) {
     if (weights.size() != weights_.size()) {
         throw std::runtime_error(\"Weight size mismatch\");
@@ -587,7 +587,7 @@ void Conv2DCPU::set_weight(const std::vector<float>& weights,
     bias_ = bias;
 }
 
-void Conv2DCPU::get_gradients(std::vector<float>& grad_w, 
+void Conv2DCPU::get_gradients(std::vector<float>& grad_w,
                               std::vector<float>& grad_b) {
     grad_w = grad_w_;
     grad_b = grad_b_;
@@ -598,7 +598,7 @@ void Conv2DCPU::update_weights(float learning_rate) {
     for (size_t i = 0; i < weights_.size(); ++i) {
         weights_[i] -= learning_rate * grad_w_[i];
     }
-    
+
     for (size_t i = 0; i < bias_.size(); ++i) {
         bias_[i] -= learning_rate * grad_b_[i];
     }
@@ -606,7 +606,8 @@ void Conv2DCPU::update_weights(float learning_rate) {
 ```
 
 **Key Points:**
-- **Forward:** Computes Y = W * X + b (convolution + bias)
+
+- **Forward:** Computes Y = W \* X + b (convolution + bias)
 - **Backward:** Computes three gradients:
   - dL/dW = dL/dY ⊗ X (gradient w.r.t. weights)
   - dL/db = sum(dL/dY) (gradient w.r.t. bias)
