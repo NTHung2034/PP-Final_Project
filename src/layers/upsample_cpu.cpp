@@ -1,9 +1,8 @@
-#include "layers/maxpool_cpu.h"
-#include <limits>
+#include "layers/upsample_cpu.h"
 #include <cstring>
 
-MaxPoolCPU::MaxPoolCPU(int pool_size) : cached_input_(), pool_size_(pool_size) {}
-Tensor MaxPoolCPU::forward(const Tensor &input)
+UpsampleCPU::UpsampleCPU(int scale) : cached_input_(), scale_(scale) {}
+Tensor UpsampleCPU::forward(const Tensor &input)
 {
     cached_input_ = input;
 
@@ -12,15 +11,13 @@ Tensor MaxPoolCPU::forward(const Tensor &input)
     int in_h = input.height();
     int in_w = input.width();
 
-    int out_h = in_h / pool_size_;
-    int out_w = in_w / pool_size_;
+    int out_h = in_h * scale_;
+    int out_w = in_w * scale_;
 
     Tensor output({batch, channels, out_h, out_w});
-    max_indices_.resize(output.size()); // store indices for backward pass
 
     const float *in_data = input.data->data();
     float *out_data = output.data->data();
-
 #pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
@@ -30,27 +27,14 @@ Tensor MaxPoolCPU::forward(const Tensor &input)
             {
                 for (int ow = 0; ow < out_w; ++ow)
                 {
-                    float max_val = -std::numeric_limits<float>::infinity();
-                    int max_idx = 0;
+                    // Map output to input coordinates
+                    int ih = oh / scale_;
+                    int iw = ow / scale_;
 
-                    for (int ph = 0; ph < pool_size_; ++ph)
-                    {
-                        for (int pw = 0; pw < pool_size_; ++pw)
-                        {
-                            int ih = oh * pool_size_ + ph;
-                            int iw = ow * pool_size_ + pw;
-                            int in_idx = ((n * channels + c) * in_h + ih) * in_w + iw;
-                            if (in_data[in_idx] > max_val)
-                            {
-                                max_val = in_data[in_idx];
-                                max_idx = in_idx;
-                            }
-                        }
-                    }
-
+                    int in_idx = ((n * channels + c) * in_h + ih) * in_w + iw;
                     int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
-                    out_data[out_idx] = max_val;
-                    max_indices_[out_idx] = max_idx;
+
+                    out_data[out_idx] = in_data[in_idx];
                 }
             }
         }
@@ -59,7 +43,7 @@ Tensor MaxPoolCPU::forward(const Tensor &input)
     return output;
 }
 
-Tensor MaxPoolCPU::backward(const Tensor &grad_output)
+Tensor UpsampleCPU::backward(const Tensor &grad_output)
 {
     // Create gradient tensor with same shape as input
     int batch = cached_input_.batch();
@@ -71,13 +55,14 @@ Tensor MaxPoolCPU::backward(const Tensor &grad_output)
     float *grad_in_data = grad_input.data->data();
     const float *grad_out_data = grad_output.data->data();
 
-    // Zero initialize gradient input
+    // Zero initialize
     std::memset(grad_in_data, 0, grad_input.size() * sizeof(float));
 
-    int out_h = in_h / pool_size_;
-    int out_w = in_w / pool_size_;
+    int out_h = in_h * scale_;
+    int out_w = in_w * scale_;
 
-    // Distribute gradients only to max positions
+    // Sum gradients from all upsampled positions back to original position
+#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
         for (int c = 0; c < channels; ++c)
@@ -86,9 +71,16 @@ Tensor MaxPoolCPU::backward(const Tensor &grad_output)
             {
                 for (int ow = 0; ow < out_w; ++ow)
                 {
+                    // Map output to input coordinates
+                    int ih = oh / scale_;
+                    int iw = ow / scale_;
+
+                    int in_idx = ((n * channels + c) * in_h + ih) * in_w + iw;
                     int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
-                    int max_idx = max_indices_[out_idx];
-                    grad_in_data[max_idx] += grad_out_data[out_idx];
+
+// Accumulate gradient (atomic not needed with proper indexing)
+#pragma omp atomic
+                    grad_in_data[in_idx] += grad_out_data[out_idx];
                 }
             }
         }

@@ -61,6 +61,9 @@ struct Tensor
     std::vector<int> strides;                   // Strides for each dimension
     std::shared_ptr<AlignedBuffer<float>> data; // Aligned memory buffer
 
+    // Default constructor (for cached/uninitialized tensors)
+    Tensor() : shape{}, strides{}, data(nullptr) {}
+
     // Constructor
     Tensor(const std::vector<int> &dims, bool zero_init = true)
         : shape(dims), data(nullptr)

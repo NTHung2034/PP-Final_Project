@@ -6,7 +6,7 @@
 
 ---
 
-## 🎯 Current Progress (November 29, 2025 - Day 2)
+## 🎯 Current Progress (November 30, 2025 - Day 3)
 
 ### ✅ Completed Tasks
 
@@ -17,7 +17,25 @@
 - ✅ Batch generation (configurable size)
 - ✅ Dataset shuffling between epochs
 - ✅ Normalization to [0,1] range
-- ✅ **Test Result:** 50,000 images loaded in 0.33 seconds
+- ✅ **Test Result:** 50,000 images loaded in 0.30 seconds
+
+**Task 1.2: CPU Layer Implementation** ✅ COMPLETE
+
+- ✅ **Conv2D Layer:**
+  - ✅ Forward pass with padding and stride
+  - ✅ Backward pass (gradients for input, weights, bias)
+  - ✅ Xavier weight initialization
+  - ✅ Weight management (set/get/update)
+  - ✅ SGD optimizer integration
+- ✅ **ReLU Layer:**
+  - ✅ Forward pass (element-wise max(0, x))
+  - ✅ Backward pass (gradient masking)
+- ✅ **MaxPool Layer:**
+  - ✅ Forward pass with index tracking
+  - ✅ Backward pass (gradient routing to max positions)
+- ✅ **Upsample Layer:**
+  - ✅ Forward pass (nearest-neighbor interpolation)
+  - ✅ Backward pass (gradient accumulation)
 
 **Windows Compatibility** ✅ COMPLETE
 
@@ -25,56 +43,52 @@
 - ✅ Path resolution (project-root relative)
 - ✅ Build system configured (CMake + MinGW)
 - ✅ All compilation errors resolved
+- ✅ Clean build: zero errors, zero warnings
 
-### 🔄 Current Task: Layer Implementation (Day 2-3)
+### 🔄 Current Task: Autoencoder Architecture (Day 3)
 
-**Task 1.2: CPU Layer Implementation** - IN PROGRESS
+**Task 1.3: Autoencoder Integration** - IN PROGRESS
 
-You need to create the following files and implement these layers:
+You need to create the autoencoder class that combines all layers:
 
-**Required Directory Structure:**
+**Required Files:**
 
 ```
-include/layers/          # Create this directory
-  ├── conv2d_cpu.h      # TODO: Create
-  ├── relu_cpu.h        # TODO: Create
-  ├── maxpool_cpu.h     # TODO: Create
-  └── upsample_cpu.h    # TODO: Create
+include/models/          # Create this directory
+  └── autoencoder_cpu.h  # TODO: Create
 
-src/layers/              # Create this directory
-  ├── conv2d_cpu.cpp    # TODO: Create
-  ├── relu_cpu.cpp      # TODO: Create
-  ├── maxpool_cpu.cpp   # TODO: Create
-  └── upsample_cpu.cpp  # TODO: Create
+src/models/              # Create this directory
+  └── autoencoder_cpu.cpp # TODO: Create
 ```
 
-**Priority Order:**
+**Architecture to Implement:**
 
-1. **Conv2D** (Most complex - start here)
-2. **ReLU** (Simple - good for testing)
-3. **MaxPool** (Medium complexity)
-4. **Upsample** (Medium complexity)
+- **Encoder:** Conv(3→256) + ReLU + MaxPool + Conv(256→128) + ReLU + MaxPool
+- **Decoder:** Conv(128→128) + ReLU + Up + Conv(128→256) + ReLU + Up + Conv(256→3)
+- **Loss:** MSE between input and reconstructed output
 
 ### 📋 Next Steps
 
-**Immediate Actions (Today - November 29):**
+**Immediate Actions (Today - November 30):**
 
-1. Create `include/layers/` and `src/layers/` directories
-2. Implement Conv2D layer (forward + backward pass)
-3. Implement ReLU layer
-4. Create unit tests for each layer
-5. Update CMakeLists.txt to build layers
+1. Create `include/models/` and `src/models/` directories
+2. Implement AutoencoderCPU class
+3. Chain encoder layers (2 conv blocks with pooling)
+4. Chain decoder layers (3 conv blocks with upsampling)
+5. Implement full forward pass (input → encoder → decoder → output)
+6. Implement full backward pass (MSE loss → gradients → weight updates)
+7. Update CMakeLists.txt to build autoencoder
 
-**Verification After Each Layer:**
+**Verification Test:**
 
 ```powershell
-# Build after adding each layer
+# Build autoencoder
 cd build
 cmake --build . --config Release
 
-# Run layer unit tests (create these as you go)
-.\bin\Release\test_conv2d.exe
-.\bin\Release\test_relu.exe
+# Run shape verification
+.\bin\Release\train_autoencoder.exe
+# Expected: Input [32,32,3] → Latent [8,8,128] → Output [32,32,3]
 ```
 
 ### 📊 Progress Checklist
@@ -86,14 +100,14 @@ cmake --build . --config Release
   - ✅ Task 1.1.3: Normalization working
   - ✅ Task 1.1.4: Data loading tested
 
-- 🔄 **Day 2-3:** Layer implementation (IN PROGRESS)
+- ✅ **Day 2-3:** Layer implementation (COMPLETE)
 
-  - [ ] Task 1.2.1: Conv2D layer
-  - [ ] Task 1.2.2: ReLU activation
-  - [ ] Task 1.2.3: MaxPooling
-  - [ ] Task 1.2.4: Upsampling
+  - ✅ Task 1.2.1: Conv2D layer (forward + backward + optimizer)
+  - ✅ Task 1.2.2: ReLU activation
+  - ✅ Task 1.2.3: MaxPooling
+  - ✅ Task 1.2.4: Upsampling
 
-- ⏳ **Day 3:** Autoencoder architecture (PENDING)
+- 🔄 **Day 3:** Autoencoder architecture (IN PROGRESS)
 
   - [ ] Task 1.3.1: Autoencoder class
   - [ ] Task 1.3.2: Forward pass
@@ -463,6 +477,143 @@ Tensor Conv2DCPU::forward(const Tensor& input) {
 - Padding: Zero-padding (implicit by bounds checking)
 - OpenMP: Parallelize outer loops for multi-core performance
 
+**Constructor with Xavier Initialization:**
+
+```cpp
+Conv2DCPU::Conv2DCPU(int in_channels, int out_channels, int kernel_size, 
+                     int stride, int padding)
+    : in_c_(in_channels), out_c_(out_channels), k_size_(kernel_size), 
+      stride_(stride), pad_(padding) 
+{
+    // Initialize weights and biases with Xavier/He initialization
+    int weight_size = out_c_ * in_c_ * k_size_ * k_size_;
+    weights_.resize(weight_size);
+    bias_.resize(out_c_);
+    grad_w_.resize(weight_size);
+    grad_b_.resize(out_c_);
+
+    // Xavier initialization: scale = sqrt(2.0 / (in_c * k_size * k_size))
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    float scale = std::sqrt(2.0f / (in_c_ * k_size_ * k_size_));
+    std::normal_distribution<float> dist(0.0f, scale);
+
+    for (int i = 0; i < weight_size; ++i) {
+        weights_[i] = dist(gen);
+    }
+
+    // Initialize biases to zero
+    std::fill(bias_.begin(), bias_.end(), 0.0f);
+}
+```
+
+**Backward Pass Implementation:**
+
+```cpp
+Tensor Conv2DCPU::backward(const Tensor& grad_output) {
+    // Initialize gradient tensors
+    Tensor grad_input(cached_input_.shape);
+    float* grad_in_data = grad_input.data->data();
+    const float* grad_out_data = grad_output.data->data();
+    const float* in_data = cached_input_.data->data();
+
+    // Zero initialize gradients
+    std::memset(grad_in_data, 0, grad_input.size() * sizeof(float));
+    std::memset(grad_w_.data(), 0, grad_w_.size() * sizeof(float));
+    std::memset(grad_b_.data(), 0, grad_b_.size() * sizeof(float));
+
+    int batch = cached_input_.batch();
+    int in_h = cached_input_.height();
+    int in_w = cached_input_.width();
+    int out_h = grad_output.height();
+    int out_w = grad_output.width();
+
+    // Compute gradients
+    #pragma omp parallel for collapse(2)
+    for (int n = 0; n < batch; ++n) {
+        for (int oc = 0; oc < out_c_; ++oc) {
+            for (int oh = 0; oh < out_h; ++oh) {
+                for (int ow = 0; ow < out_w; ++ow) {
+                    int out_idx = ((n * out_c_ + oc) * out_h + oh) * out_w + ow;
+                    float grad_out = grad_out_data[out_idx];
+
+                    // Gradient w.r.t. bias
+                    #pragma omp atomic
+                    grad_b_[oc] += grad_out;
+
+                    // Gradient w.r.t. weights and input
+                    for (int ic = 0; ic < in_c_; ++ic) {
+                        for (int kh = 0; kh < k_size_; ++kh) {
+                            for (int kw = 0; kw < k_size_; ++kw) {
+                                int ih = oh * stride_ - pad_ + kh;
+                                int iw = ow * stride_ - pad_ + kw;
+
+                                if (ih >= 0 && ih < in_h && iw >= 0 && iw < in_w) {
+                                    int in_idx = ((n * in_c_ + ic) * in_h + ih) * in_w + iw;
+                                    int w_idx = ((oc * in_c_ + ic) * k_size_ + kh) * k_size_ + kw;
+
+                                    // Gradient w.r.t. weights: dL/dW = dL/dY * X
+                                    #pragma omp atomic
+                                    grad_w_[w_idx] += grad_out * in_data[in_idx];
+
+                                    // Gradient w.r.t. input: dL/dX = dL/dY * W
+                                    #pragma omp atomic
+                                    grad_in_data[in_idx] += grad_out * weights_[w_idx];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return grad_input;
+}
+```
+
+**Weight Management Functions:**
+
+```cpp
+void Conv2DCPU::set_weight(const std::vector<float>& weights, 
+                           const std::vector<float>& bias) {
+    if (weights.size() != weights_.size()) {
+        throw std::runtime_error(\"Weight size mismatch\");
+    }
+    if (bias.size() != bias_.size()) {
+        throw std::runtime_error(\"Bias size mismatch\");
+    }
+    weights_ = weights;
+    bias_ = bias;
+}
+
+void Conv2DCPU::get_gradients(std::vector<float>& grad_w, 
+                              std::vector<float>& grad_b) {
+    grad_w = grad_w_;
+    grad_b = grad_b_;
+}
+
+void Conv2DCPU::update_weights(float learning_rate) {
+    // SGD update: weight -= learning_rate * gradient
+    for (size_t i = 0; i < weights_.size(); ++i) {
+        weights_[i] -= learning_rate * grad_w_[i];
+    }
+    
+    for (size_t i = 0; i < bias_.size(); ++i) {
+        bias_[i] -= learning_rate * grad_b_[i];
+    }
+}
+```
+
+**Key Points:**
+- **Forward:** Computes Y = W * X + b (convolution + bias)
+- **Backward:** Computes three gradients:
+  - dL/dW = dL/dY ⊗ X (gradient w.r.t. weights)
+  - dL/db = sum(dL/dY) (gradient w.r.t. bias)
+  - dL/dX = dL/dY ⊗ W (gradient w.r.t. input, for backprop)
+- **Atomic operations** prevent race conditions in parallel regions
+- **Xavier initialization** helps prevent vanishing/exploding gradients
+
 #### Step 1.2.2: Implement ReLU Activation
 
 **File:** `include/layers/relu_cpu.h`
@@ -570,6 +721,49 @@ Tensor MaxPoolCPU::forward(const Tensor& input) {
     return output;
 }
 ```
+
+**Backward Pass Implementation:**
+
+```cpp
+Tensor MaxPoolCPU::backward(const Tensor& grad_output) {
+    // Create gradient tensor with same shape as input
+    int batch = cached_input_.batch();
+    int channels = cached_input_.channels();
+    int in_h = cached_input_.height();
+    int in_w = cached_input_.width();
+
+    Tensor grad_input({batch, channels, in_h, in_w});
+    float* grad_in_data = grad_input.data->data();
+    const float* grad_out_data = grad_output.data->data();
+
+    // Zero initialize gradient input
+    std::memset(grad_in_data, 0, grad_input.size() * sizeof(float));
+
+    int out_h = in_h / pool_size_;
+    int out_w = in_w / pool_size_;
+
+    // Distribute gradients only to max positions
+    for (int n = 0; n < batch; ++n) {
+        for (int c = 0; c < channels; ++c) {
+            for (int oh = 0; oh < out_h; ++oh) {
+                for (int ow = 0; ow < out_w; ++ow) {
+                    int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
+                    int max_idx = max_indices_[out_idx];
+                    grad_in_data[max_idx] += grad_out_data[out_idx];
+                }
+            }
+        }
+    }
+
+    return grad_input;
+}
+```
+
+**Key Points:**
+
+- Gradient flows only to the position that had the maximum value during forward pass
+- Uses stored `max_indices_` from forward pass
+- All other positions get zero gradient
 
 #### Step 1.2.4: Implement Upsampling (Nearest Neighbor)
 

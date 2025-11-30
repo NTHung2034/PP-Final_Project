@@ -40,6 +40,13 @@ set(UTILS_SOURCES
     src/utils/memory_pool.cpp
 )
 
+set(LAYER_SOURCES
+    src/layers/conv2d_cpu.cpp
+    src/layers/relu_cpu.cpp
+    src/layers/maxpool_cpu.cpp
+    src/layers/upsample_cpu.cpp
+)
+
 set(MAIN_SOURCES
     src/main_train.cpp
 )
@@ -48,6 +55,7 @@ set(MAIN_SOURCES
 add_executable(train_autoencoder 
     ${DATA_SOURCES}
     ${UTILS_SOURCES}
+    ${LAYER_SOURCES}
     ${MAIN_SOURCES}
 )
 

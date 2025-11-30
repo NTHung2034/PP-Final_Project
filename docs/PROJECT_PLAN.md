@@ -167,19 +167,26 @@ Output: Reconstructed (32×32×3) RGB Images
 
 #### **Day 3-4: November 30 - December 1** (Phase 1 Complete) 🔄 IN PROGRESS
 
-**Focus:** CPU neural network implementation
+**Focus:** CPU neural network implementation and autoencoder integration
 
-- [ ] **Milestone 1.3:** CPU layers implemented
-  - Conv2D with 3×3 kernels
-  - ReLU activation
-  - MaxPooling 2×2
-  - Upsampling (nearest neighbor)
-  - MSE loss function
-- [ ] **Milestone 1.4:** CPU training working
-  - Forward pass: input → encoder → decoder → output
-  - Backward pass: gradients computed
-  - Weight updates via SGD
-  - Loss decreasing over epochs
+- ✅ **Milestone 1.3:** CPU layers implemented
+  - ✅ Conv2D with 3×3 kernels (forward + backward)
+  - ✅ ReLU activation (forward + backward)
+  - ✅ MaxPooling 2×2 (forward + backward)
+  - ✅ Upsampling nearest-neighbor (forward + backward)
+  - ✅ Xavier weight initialization
+  - ✅ SGD optimizer implementation
+- 🔄 **Milestone 1.4:** Autoencoder architecture (IN PROGRESS)
+  - [ ] Create AutoencoderCPU class
+  - [ ] Implement encoder chain (Conv→ReLU→Pool×2)
+  - [ ] Implement decoder chain (Conv→ReLU→Up×2)
+  - [ ] Full forward pass: input → encoder → decoder → output
+  - [ ] Full backward pass: MSE loss → gradients → weight updates
+- [ ] **Milestone 1.5:** CPU training working
+  - [ ] Training loop for 2-5 epochs
+  - [ ] Loss tracking and display
+  - [ ] Weight save/load functionality
+  - [ ] Verify loss decreases over epochs
 
 **Verification Test:**
 
