@@ -26,9 +26,10 @@ src/
 
 ```bash
 # Clone and build, (run from project root)
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+mkdir build 
+cd build
+cmake --build .
+make 
 
 # Download dataset (run from project root)
 cd scripts

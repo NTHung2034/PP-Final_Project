@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "stdexcept": "cpp"
-    }
+        "stdexcept": "cpp",
+        "cmath": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

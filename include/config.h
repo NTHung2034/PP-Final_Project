@@ -1,9 +1,8 @@
 #pragma once
 
 // Data Configuration
-#define CIFAR_BIN_DIR           "../data/cifar-10-batches-bin"
-#define TRAIN_BATCH_FILES       { "data_batch_1.bin", "data_batch_2.bin", \
-                                 "data_batch_3.bin", "data_batch_4.bin", "data_batch_5.bin" }
+#define CIFAR_BIN_DIR           "../data"
+#define TRAIN_BATCH_FILES       { "data_batch_1.bin", "data_batch_2.bin", "data_batch_3.bin", "data_batch_4.bin", "data_batch_5.bin" }
 #define TEST_BATCH_FILE         "test_batch.bin"
 #define MODEL_SAVE_DIR          "../models/saved_weights"
 

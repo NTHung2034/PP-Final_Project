@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <memory>
+#include "config.h"
 
 class CIFAR10Dataset {
 public:

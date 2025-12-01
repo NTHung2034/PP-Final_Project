@@ -4,37 +4,11 @@
 #include <stdexcept>
 #include <cstring>
 
-// RAII wrapper for aligned memory allocation
-template<typename T>
-class AlignedBuffer {
-public:
-    AlignedBuffer(size_t size, size_t alignment = 64) : size_(size) {
-        // Use posix_memalign for cache-line alignment
-        if (posix_memalign(&ptr_, alignment, size * sizeof(T)) != 0) {
-            throw std::bad_alloc();
-        }
-    }
-    
-    ~AlignedBuffer() { free(ptr_); }
-    
-    T* data() { return static_cast<T*>(ptr_); }
-    const T* data() const { return static_cast<T*>(ptr_); }
-    size_t size() const { return size_; }
-    
-    // Disable copy, enable move
-    AlignedBuffer(const AlignedBuffer&) = delete;
-    AlignedBuffer& operator=(const AlignedBuffer&) = delete;
-    
-private:
-    void* ptr_ = nullptr;
-    size_t size_;
-};
-
-// Multi-dimensional tensor optimized for NCHW format
+// Multi-dimensional tensor using standard vector (no custom alignment)
 struct Tensor {
     std::vector<int> shape;                    // [N, C, H, W] or [N, H, W, C]
     std::vector<int> strides;                  // Strides for each dimension
-    std::shared_ptr<AlignedBuffer<float>> data; // Aligned memory buffer
+    std::shared_ptr<std::vector<float>> data;  // Standard vector instead of AlignedBuffer
     
     // Constructor
     Tensor(const std::vector<int>& dims, bool zero_init = true) 
@@ -49,10 +23,11 @@ struct Tensor {
         // Allocate memory
         size_t total_elements = 1;
         for (int d : dims) total_elements *= d;
-        data = std::make_shared<AlignedBuffer<float>>(total_elements);
         
         if (zero_init) {
-            std::fill(data->data(), data->data() + total_elements, 0.0f);
+            data = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+        } else {
+            data = std::make_shared<std::vector<float>>(total_elements);
         }
     }
     
@@ -73,7 +48,7 @@ struct Tensor {
             #endif
             offset += indices[i] * strides[i];
         }
-        return data->data()[offset];
+        return (*data)[offset];
     }
     
     const float& operator()(const std::vector<int>& indices) const {
@@ -86,6 +61,10 @@ struct Tensor {
         for (int d : shape) sz *= d;
         return sz;
     }
+    
+    // Direct data access
+    float* raw_data() { return data->data(); }
+    const float* raw_data() const { return data->data(); }
     
     // Check dimensions
     bool is_nchw() const { return shape.size() == 4; }

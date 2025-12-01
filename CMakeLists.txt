@@ -37,46 +37,57 @@ set(DATA_SOURCES
 
 set(UTILS_SOURCES
     src/utils/logger.cpp
-    src/utils/memory_pool.cpp
+    # src/utils/memory_pool.cpp
 )
 
 set(MAIN_SOURCES
-    src/main_train.cpp
+    src/main_train.cpp    
+)
+
+set(TEST_SOURCES
+    src/test_data.cpp
 )
 
 # Create executable
-add_executable(train_autoencoder 
+# add_executable(train_autoencoder 
+#     ${DATA_SOURCES}
+#     ${UTILS_SOURCES}
+#     ${MAIN_SOURCES}
+# )
+
+add_executable(test_dataloader
     ${DATA_SOURCES}
     ${UTILS_SOURCES}
-    ${MAIN_SOURCES}
+    ${TEST_SOURCES}
 )
 
-# Link libraries - OpenMP is always required
-target_link_libraries(train_autoencoder 
-    OpenMP::OpenMP_CXX
-)
 
-# Add CUDA support if available
-if(CUDA_AVAILABLE)
-    target_link_libraries(train_autoencoder CUDA::cudart)
-    target_compile_definitions(train_autoencoder PRIVATE USE_CUDA)
-endif()
+# # Link libraries - OpenMP is always required
+# target_link_libraries(train_autoencoder 
+#     OpenMP::OpenMP_CXX
+# )
 
-# Compiler flags (MSVC and GCC/Clang compatible)
-if(MSVC)
-    target_compile_options(train_autoencoder PRIVATE
-        /W4 /O2 /openmp
-    )
-else()
-    target_compile_options(train_autoencoder PRIVATE
-        -Wall -Wextra -O3 -march=native -fopenmp
-    )
-endif()
+# # Add CUDA support if available
+# if(CUDA_AVAILABLE)
+#     target_link_libraries(train_autoencoder CUDA::cudart)
+#     target_compile_definitions(train_autoencoder PRIVATE USE_CUDA)
+# endif()
 
-# Set output directories
-set_target_properties(train_autoencoder PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+# # Compiler flags (MSVC and GCC/Clang compatible)
+# if(MSVC)
+#     target_compile_options(train_autoencoder PRIVATE
+#         /W4 /O2 /openmp
+#     )
+# else()
+#     target_compile_options(train_autoencoder PRIVATE
+#         -Wall -Wextra -O3 -march=native -fopenmp
+#     )
+# endif()
+
+# # Set output directories
+# set_target_properties(train_autoencoder PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+# )
 
 # Create data directory
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)

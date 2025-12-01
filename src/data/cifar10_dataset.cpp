@@ -3,9 +3,9 @@
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include <chrono>
 
-CIFAR10Dataset::CIFAR10Dataset(const std::string& data_root, Mode mode) 
-    : data_root_(data_root), mode_(mode), rng_(RANDOM_SEED) {
+CIFAR10Dataset::CIFAR10Dataset(const std::string& data_root, Mode mode) : data_root_(data_root), mode_(mode), rng_(RANDOM_SEED) {
     
     // Set number of images based on mode
     num_images_ = (mode == Mode::TRAIN) ? CIFAR_TRAIN_IMAGES : CIFAR_TEST_IMAGES;
@@ -84,7 +84,7 @@ void CIFAR10Dataset::load_batch(const std::string& filename, int start_idx) {
         labels_[start_idx + i] = buffer[0];
         
         // Extract and normalize image
-        float* img_ptr = images_->data->data() + (start_idx + i) * CIFAR_PIXELS;
+        float* img_ptr = images_->raw_data() + (start_idx + i) * CIFAR_PIXELS;
         
         // Convert from NHWC (file format) to NCHW (our format)
         for (int c = 0; c < CIFAR_CHANNELS; ++c) {
@@ -125,8 +125,8 @@ Tensor CIFAR10Dataset::get_batch(int batch_size) {
     Tensor batch(batch_shape);
     
     // Copy images using shuffled indices
-    float* batch_ptr = batch.data->data();
-    const float* full_ptr = images_->data->data();
+    float* batch_ptr = batch.raw_data();
+    const float* full_ptr = images_->raw_data();
     
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < actual_batch_size; ++i) {

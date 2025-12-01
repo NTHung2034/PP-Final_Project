@@ -1,4 +1,5 @@
 #include "data/data_utils.h"
+#include "utils/logger.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -51,11 +52,11 @@ namespace DataUtils {
         
         // Write shape
         int ndim = tensor.shape.size();
-        file.write(reinterpret_cast<char*>(&ndim), sizeof(int));
-        file.write(reinterpret_cast<char*>(&tensor.shape[0]), ndim * sizeof(int));
+        file.write(reinterpret_cast<const char*>(&ndim), sizeof(int));
+        file.write(reinterpret_cast<const char*>(tensor.shape.data()), ndim * sizeof(int));
         
         // Write data
-        file.write(reinterpret_cast<char*>(tensor.data->data()), 
+        file.write(reinterpret_cast<const char*>(tensor.data->data()), 
                 tensor.size() * sizeof(float));
         
         file.close();

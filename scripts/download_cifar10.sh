@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATA_DIR="../data"
+DATA_DIR="./data"
 CIFAR_URL="https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz"
 
 echo "Downloading CIFAR-10 dataset..."
