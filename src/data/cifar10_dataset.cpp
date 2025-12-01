@@ -52,7 +52,7 @@ void CIFAR10Dataset::load_data()
         const std::vector<std::string> batch_files = TRAIN_BATCH_FILES;
         const int images_per_batch = CIFAR_TRAIN_IMAGES / batch_files.size();
 
-        for (int i = 0; i < batch_files.size(); ++i)
+        for (size_t i = 0; i < batch_files.size(); ++i)
         {
             std::string filepath = data_root_ + "/" + batch_files[i];
             load_batch(filepath, i * images_per_batch);
@@ -175,7 +175,7 @@ std::vector<int> CIFAR10Dataset::get_batch_labels(int batch_size)
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < actual_batch_size; ++i)
     {
-        size_t img_idx = shuffled_indices_[current_index_ + i - actual_batch_size];
+        size_t img_idx = shuffled_indices_[current_index_ + i];
         batch_labels[i] = labels_[img_idx];
     }
 

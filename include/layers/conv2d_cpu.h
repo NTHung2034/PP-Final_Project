@@ -8,6 +8,7 @@ public:
     Tensor forward(const Tensor &input);
     Tensor backward(const Tensor &input);
     void set_weight(const std::vector<float> &weights, const std::vector<float> &bias);
+    void get_weights(std::vector<float> &weights, std::vector<float> &bias) const;
     void get_gradients(std::vector<float> &grad_w, std::vector<float> &grad_b);
     void update_weights(float learning_rate);
 

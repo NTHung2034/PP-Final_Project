@@ -171,6 +171,12 @@ void Conv2DCPU::set_weight(const std::vector<float> &weights, const std::vector<
     bias_ = bias;
 }
 
+void Conv2DCPU::get_weights(std::vector<float> &weights, std::vector<float> &bias) const
+{
+    weights = weights_;
+    bias = bias_;
+}
+
 void Conv2DCPU::get_gradients(std::vector<float> &grad_w, std::vector<float> &grad_b)
 {
     grad_w = grad_w_;

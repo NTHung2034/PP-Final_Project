@@ -47,16 +47,33 @@ set(LAYER_SOURCES
     src/layers/upsample_cpu.cpp
 )
 
+set(MODEL_SOURCES
+    src/models/autoencoder_cpu.cpp
+)
+
 set(MAIN_SOURCES
     src/main_train.cpp
 )
 
-# Create executable
-add_executable(train_autoencoder 
+set(TRAIN_CPU_SOURCES
+    src/train_cpu.cpp
+)
+
+# Create executables
+add_executable(train_autoencoder
     ${DATA_SOURCES}
     ${UTILS_SOURCES}
     ${LAYER_SOURCES}
+    ${MODEL_SOURCES}
     ${MAIN_SOURCES}
+)
+
+add_executable(train_cpu 
+    ${DATA_SOURCES}
+    ${UTILS_SOURCES}
+    ${LAYER_SOURCES}
+    ${MODEL_SOURCES}
+    ${TRAIN_CPU_SOURCES}
 )
 
 # Link libraries - OpenMP is always required
@@ -64,10 +81,17 @@ target_link_libraries(train_autoencoder
     OpenMP::OpenMP_CXX
 )
 
+target_link_libraries(train_cpu 
+    OpenMP::OpenMP_CXX
+)
+
 # Add CUDA support if available
 if(CUDA_AVAILABLE)
     target_link_libraries(train_autoencoder CUDA::cudart)
     target_compile_definitions(train_autoencoder PRIVATE USE_CUDA)
+    
+    target_link_libraries(train_cpu CUDA::cudart)
+    target_compile_definitions(train_cpu PRIVATE USE_CUDA)
 endif()
 
 # Compiler flags (MSVC and GCC/Clang compatible)
@@ -75,17 +99,54 @@ if(MSVC)
     target_compile_options(train_autoencoder PRIVATE
         /W4 /O2 /openmp
     )
+    target_compile_options(train_cpu PRIVATE
+        /W4 /O2 /openmp
+    )
 else()
     target_compile_options(train_autoencoder PRIVATE
+        -Wall -Wextra -O3 -march=native -fopenmp
+    )
+    target_compile_options(train_cpu PRIVATE
         -Wall -Wextra -O3 -march=native -fopenmp
     )
 endif()
 
 # Set output directories
-set_target_properties(train_autoencoder PROPERTIES
+set_target_properties(train_autoencoder train_cpu PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-# Create data directory
+# Test executables
+add_executable(test_layers
+    tests/test_layers.cpp
+    ${DATA_SOURCES}
+    ${UTILS_SOURCES}
+    ${LAYER_SOURCES}
+)
+
+add_executable(test_autoencoder
+    tests/test_autoencoder.cpp
+    ${DATA_SOURCES}
+    ${UTILS_SOURCES}
+    ${LAYER_SOURCES}
+    ${MODEL_SOURCES}
+)
+
+target_link_libraries(test_layers OpenMP::OpenMP_CXX)
+target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX)
+
+if(MSVC)
+    target_compile_options(test_layers PRIVATE /W4 /O2 /openmp)
+    target_compile_options(test_autoencoder PRIVATE /W4 /O2 /openmp)
+else()
+    target_compile_options(test_layers PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
+    target_compile_options(test_autoencoder PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
+endif()
+
+set_target_properties(test_layers test_autoencoder PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+# Create directories
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights)
