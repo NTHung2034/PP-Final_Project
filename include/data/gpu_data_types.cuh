@@ -38,8 +38,8 @@ struct GPUTensor {
     
     // Constructor - allocates both device and pinned host memory
     // Using pinned memory (cudaMallocHost) for faster transfers via DMA
-    GPUTensor(int b, int c, int h, int w) 
-        : batch(b), channels(c), height(h), width(w), owns_memory(true) {
+    GPUTensor(int b, int c, int h, int w, bool device_only=false) 
+        : batch(b), channels(c), height(h), width(w), owns_memory(true), h_data(nullptr){
         
         size = b * c * h * w;
         bytes = size * sizeof(float);
@@ -49,17 +49,10 @@ struct GPUTensor {
         
         // Allocate pinned host memory for faster H2D/D2H transfers
         // Pinned memory allows DMA and async copies
-        CUDA_CHECK(cudaMallocHost(&h_data, bytes));
+        if (!device_only) {
+            CUDA_CHECK(cudaMallocHost(&h_data, bytes));
+        } 
     }
-    
-    // GPUTensor(int b, int c, int h, int w, bool /*device_only*/) 
-    //     : batch(b), channels(c), height(h), width(w), owns_memory(true), h_data(nullptr) {
-        
-    //     size = b * c * h * w;
-    //     bytes = size * sizeof(float);
-        
-    //     CUDA_CHECK(cudaMalloc(&d_data, bytes));
-    // }
     
     ~GPUTensor() {
         if (owns_memory) {

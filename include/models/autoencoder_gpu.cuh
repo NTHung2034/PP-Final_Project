@@ -1,5 +1,5 @@
-#ifndef AUTOENCODER_GPU_H
-#define AUTOENCODER_GPU_H
+#ifndef AUTOENCODER_GPU_CUH
+#define AUTOENCODER_GPU_CUH
 
 #include "layers_gpu/conv2d_gpu.cuh"
 #include "layers_gpu/relu_gpu.cuh"  

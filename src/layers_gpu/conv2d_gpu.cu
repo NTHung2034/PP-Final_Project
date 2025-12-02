@@ -309,9 +309,6 @@ __global__ void conv2d_backward_weights_kernel(
     }
 }
 
-/**
- * Conv2D Backward Pass Launcher
- */
 void conv2d_backward_gpu(
     const GPUTensor& input,
     const GPUTensor& grad_output,

@@ -51,10 +51,6 @@ __global__ void mse_loss_kernel(
     }
 }
 
-/**
- * MSE Loss Gradient Kernel
- * Computes gradient: 2 * (predicted - target) / N
- */
 __global__ void mse_loss_backward_kernel(
     const float* __restrict__ predicted,
     const float* __restrict__ target,
@@ -69,10 +65,6 @@ __global__ void mse_loss_backward_kernel(
     }
 }
 
-/**
- * MSE Loss Forward Pass
- * Returns mean squared error value
- */
 float mse_loss_forward_gpu(
     const GPUTensor& predicted,
     const GPUTensor& target,
@@ -104,9 +96,6 @@ float mse_loss_forward_gpu(
     return h_loss_sum / predicted.size;
 }
 
-/**
- * MSE Loss Backward Pass
- */
 void mse_loss_backward_gpu(
     const GPUTensor& predicted,
     const GPUTensor& target,
