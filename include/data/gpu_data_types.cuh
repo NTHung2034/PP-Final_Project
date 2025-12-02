@@ -52,14 +52,14 @@ struct GPUTensor {
         CUDA_CHECK(cudaMallocHost(&h_data, bytes));
     }
     
-    GPUTensor(int b, int c, int h, int w, bool device_only) 
-        : batch(b), channels(c), height(h), width(w), owns_memory(true), h_data(nullptr) {
+    // GPUTensor(int b, int c, int h, int w, bool /*device_only*/) 
+    //     : batch(b), channels(c), height(h), width(w), owns_memory(true), h_data(nullptr) {
         
-        size = b * c * h * w;
-        bytes = size * sizeof(float);
+    //     size = b * c * h * w;
+    //     bytes = size * sizeof(float);
         
-        CUDA_CHECK(cudaMalloc(&d_data, bytes));
-    }
+    //     CUDA_CHECK(cudaMalloc(&d_data, bytes));
+    // }
     
     ~GPUTensor() {
         if (owns_memory) {
@@ -153,7 +153,7 @@ struct GPUConvWeights {
             h_weights[i] = scale * ((rand() / (float)RAND_MAX) * 2.0f - 1.0f);
         }
         
-        for (int i = 0; i < bias_size; i++) {
+        for (size_t i = 0; i < bias_size; i++) {
             h_bias[i] = 0.0f;  // Initialize bias to zero
         }
         

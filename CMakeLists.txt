@@ -144,7 +144,7 @@ if(CUDA_AVAILABLE)
     # # Set CUDA properties - RTX 4060 is Ada (SM 89)
     # set_target_properties(train_gpu PROPERTIES
     #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+    #     CUDA_ARCHITECTURES "75;80;89"  
     # )
 
     # # Include directories for CUDA
@@ -188,7 +188,7 @@ if(CUDA_AVAILABLE)
 
     set_target_properties(test_layers_gpu PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+        CUDA_ARCHITECTURES "75;80;89"  
     )
 
     target_include_directories(test_layers_gpu PRIVATE 
@@ -208,7 +208,7 @@ if(CUDA_AVAILABLE)
 
     set_target_properties(test_autoencoder_gpu PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+        CUDA_ARCHITECTURES "75;80;89"  
     )
 
     target_include_directories(test_autoencoder_gpu PRIVATE 

@@ -76,7 +76,7 @@ __global__ void mse_loss_backward_kernel(
 float mse_loss_forward_gpu(
     const GPUTensor& predicted,
     const GPUTensor& target,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     // Allocate device memory for loss sum
     float* d_loss_sum;
@@ -111,7 +111,7 @@ void mse_loss_backward_gpu(
     const GPUTensor& predicted,
     const GPUTensor& target,
     GPUTensor& grad,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     int threads = 256;
     int blocks = (predicted.size + threads - 1) / threads;

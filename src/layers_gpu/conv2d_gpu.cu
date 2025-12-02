@@ -48,8 +48,9 @@ __global__ void conv2d_relu_fused_kernel(
     // Output position this thread is responsible for
     int out_x = blockIdx.x * TILE_WIDTH + tx;
     int out_y = blockIdx.y * TILE_HEIGHT + ty;
-    int out_channel = blockIdx.z;
-    int batch_idx = blockIdx.w;
+    // blockIdx.z encodes both batch and output channel
+    int out_channel = blockIdx.z % out_c;
+    int batch_idx = blockIdx.z / out_c;
     
     // Check if this thread is within valid output bounds
     if (out_x >= out_w || out_y >= out_h || batch_idx >= batch || out_channel >= out_c)
@@ -139,7 +140,7 @@ void conv2d_forward_gpu(
     int kernel_h, int kernel_w,
     int padding, int stride,
     bool apply_relu,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     // Configure launch parameters
     dim3 blockDim(TILE_WIDTH, TILE_HEIGHT, 1);
@@ -318,7 +319,7 @@ void conv2d_backward_gpu(
     GPUTensor& grad_input,
     int kernel_h, int kernel_w,
     int padding, int stride,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     // Zero out gradient buffers
     CUDA_CHECK(cudaMemsetAsync(weights.d_grad_w, 0, 

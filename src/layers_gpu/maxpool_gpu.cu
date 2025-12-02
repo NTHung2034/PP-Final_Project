@@ -104,7 +104,7 @@ void maxpool2d_forward_gpu(
     const GPUTensor& input,
     GPUTensor& output,
     int* d_max_indices,  // Device pointer for max indices
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     dim3 blockDim(16, 16);
     int grid_x = (output.width + 15) / 16;
@@ -128,7 +128,7 @@ void maxpool2d_backward_gpu(
     const GPUTensor& grad_output,
     const int* d_max_indices,
     GPUTensor& grad_input,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     // Zero out grad_input first
     CUDA_CHECK(cudaMemsetAsync(grad_input.d_data, 0, grad_input.bytes, stream));

@@ -85,8 +85,8 @@ __global__ void upsample2d_backward_kernel(
 void upsample2d_forward_gpu(
     const GPUTensor& input,
     GPUTensor& output,
-    int scale_factor = 2,
-    cudaStream_t stream = 0)
+    int scale_factor,
+    cudaStream_t stream)
 {
     dim3 blockDim(16, 16);
     int grid_x = (output.width + 15) / 16;
@@ -109,8 +109,8 @@ void upsample2d_forward_gpu(
 void upsample2d_backward_gpu(
     const GPUTensor& grad_output,
     GPUTensor& grad_input,
-    int scale_factor = 2,
-    cudaStream_t stream = 0)
+    int scale_factor,
+    cudaStream_t stream)
 {
     dim3 blockDim(16, 16);
     int grid_x = (grad_input.width + 15) / 16;

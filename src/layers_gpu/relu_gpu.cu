@@ -49,7 +49,7 @@ __global__ void relu_backward_kernel(
 /**
  * ReLU Forward Pass Launcher
  */
-void relu_forward_gpu(GPUTensor& data, cudaStream_t stream = 0) {
+void relu_forward_gpu(GPUTensor& data, cudaStream_t stream) {
     int threads = 256;
     int blocks = (data.size + threads - 1) / threads;
     
@@ -65,7 +65,7 @@ void relu_backward_gpu(
     const GPUTensor& input,
     const GPUTensor& grad_output,
     GPUTensor& grad_input,
-    cudaStream_t stream = 0)
+    cudaStream_t stream)
 {
     int threads = 256;
     int blocks = (input.size + threads - 1) / threads;
