@@ -56,8 +56,14 @@ bash ./scripts/download_cifar10.sh
 mkdir build
 cd build
 
-# Configure (CPU-only)
+# --In local--
+# compile CPU only
 cmake --build .
+
+# --On Google colab--
+# compile CPU only
+!cmake ..
+!make
 ```
 
 ### 4. Run Tests (build directory)
@@ -166,3 +172,4 @@ PP-Final_Project/
         └── test_autoencoder.exe   # Autoencoder tests
 ``` build/                      # Build output (generated)
 ```
+
