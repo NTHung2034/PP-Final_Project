@@ -35,34 +35,43 @@
 
 ---
 
-## Quick Start
+## Quick Start - **SHOULD USE GOOGLE COLAB**
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/NTHung2034/PP-Final_Project.git
-cd PP-Final_Project
+!git clone https://github.com/NTHung2034/PP-Final_Project.git
+%cd PP-Final_Project
 ```
 
-### 2. Download CIFAR-10 Dataset
+### 2. Download CIFAR-10 Dataset (root directory)
  
 ```bash
-bash ./scripts/download_cifar10.sh
+!bash ./scripts/download_cifar10.sh
 ```
 
 ### 3. Build the Project
 
 ```bash
 # Create build directory
-mkdir build
-cd build
+!mkdir build
+%cd build
+```
+If you choose to build project in local
 
-# --In local--
-# compile CPU only
+```bash
+# compile CPU code only
 cmake --build .
+```
 
-# --On Google colab--
-# compile CPU only
+If you choose **Google colab**
+```bash
+# include CPU code only
 !cmake ..
+
+# or else (include all)
+!cmake .. -DENABLE_CUDA=ON
+
+# compile 
 !make
 ```
 
@@ -74,8 +83,14 @@ cmake --build .
 # Test cpu layers
 ./test_layers
 
-# Test autoencoder 
+# Test cpu autoencoder 
 ./test_autoencoder
+
+# Test gpu layers
+./test_layers_gpu
+
+# Test gpu autoencoder
+./test_autoencoder_gpu
 ```
 
 ### 5. Train with CPU
@@ -99,39 +114,57 @@ PP-Final_Project/
 │   ├── data/
 │   │   ├── cifar10_dataset.h      # CIFAR-10 dataset loader class
 │   │   ├── data_types.h           # Tensor struct and data type definitions
-│   │   └── data_utils.h           # Data preprocessing utilities
+│   │   ├── data_utils.h           # Data preprocessing utilities
+│   │   └── gpu_data_types.cuh     # GPU tensor and weight structures
 │   ├── layers/
 │   │   ├── conv2d_cpu.h           # 2D Convolution layer (CPU)
 │   │   ├── maxpool_cpu.h          # Max Pooling layer (CPU)
 │   │   ├── relu_cpu.h             # ReLU activation layer (CPU)
 │   │   └── upsample_cpu.h         # Upsampling layer (CPU)
+│   ├── layers_gpu/
+│   │   ├── conv2d_gpu.cuh         # 2D Convolution layer (GPU)
+│   │   ├── maxpool_gpu.cuh        # Max Pooling layer (GPU)
+│   │   ├── relu_gpu.cuh           # ReLU activation layer (GPU)
+│   │   ├── upsample_gpu.cuh       # Upsampling layer (GPU)
+│   │   └── mse_loss_gpu.cuh       # MSE Loss layer (GPU)
 │   ├── models/
-│   │   └── autoencoder_cpu.h      # Autoencoder model (CPU)
+│   │   ├── autoencoder_cpu.h      # Autoencoder model (CPU)
+│   │   └── autoencoder_gpu.cuh    # Autoencoder model (GPU)
 │   └── utils/
 │       ├── logger.h               # Logging utilities
 │       └── memory_pool.h          # Memory pool for efficient allocation
 │
 ├── src/                           # Source implementations
 │   ├── train_cpu.cpp              # CPU training entry point
+│   ├── train_gpu.cu               # GPU training entry point
 │   ├── data/
 │   │   ├── cifar10_dataset.cpp    # Dataset loader implementation
 │   │   ├── data_utils.cpp         # Data utilities implementation
 │   │   └── README.md              # Data module documentation
 │   ├── layers/
-│   │   ├── conv2d_cpu.cpp         # Conv2D forward/backward pass
-│   │   ├── maxpool_cpu.cpp        # MaxPool forward/backward pass
-│   │   ├── relu_cpu.cpp           # ReLU forward/backward pass
-│   │   └── upsample_cpu.cpp       # Upsample forward/backward pass
+│   │   ├── conv2d_cpu.cpp         # Conv2D forward/backward pass (CPU)
+│   │   ├── maxpool_cpu.cpp        # MaxPool forward/backward pass (CPU)
+│   │   ├── relu_cpu.cpp           # ReLU forward/backward pass (CPU)
+│   │   └── upsample_cpu.cpp       # Upsample forward/backward pass (CPU)
+│   ├── layers_gpu/
+│   │   ├── conv2d_gpu.cu          # Conv2D forward/backward pass (GPU)
+│   │   ├── maxpool_gpu.cu         # MaxPool forward/backward pass (GPU)
+│   │   ├── relu_gpu.cu            # ReLU forward/backward pass (GPU)
+│   │   ├── upsample_gpu.cu        # Upsample forward/backward pass (GPU)
+│   │   └── mse_loss_gpu.cu        # MSE Loss forward/backward pass (GPU)
 │   ├── models/
-│   │   └── autoencoder_cpu.cpp    # Autoencoder training logic
+│   │   ├── autoencoder_cpu.cpp    # Autoencoder training logic (CPU)
+│   │   └── autoencode_gpu.cu      # Autoencoder training logic (GPU)
 │   └── utils/
 │       ├── logger.cpp             # Logger implementation
 │       └── memory_pool.cpp        # Memory pool implementation
 │
 ├── tests/                         # Unit tests
 │   ├── test_dataloader.cpp        # Tests for data loading
-│   ├── test_layers.cpp            # Tests for neural network layers
-│   └── test_autoencoder.cpp       # Tests for autoencoder model
+│   ├── test_layers.cpp            # Tests for neural network layers (CPU)
+│   ├── test_autoencoder.cpp       # Tests for autoencoder model (CPU)
+│   ├── test_layers_gpu.cu         # Tests for neural network layers (GPU)
+│   └── test_autoencoder_gpu.cu    # Tests for autoencoder model (GPU)
 │
 ├── data/                          # CIFAR-10 dataset (run download script)
 │   ├── data_batch_1.bin           # Training batch 1 (10,000 images)
@@ -154,7 +187,6 @@ PP-Final_Project/
 │
 ├── docs/                          # Project documentation
 │   ├── CSC14120_2025_Final_Project.md   # Full project requirements
-│   ├── CSC14120_2025_Final Project.pdf  # Project requirements (PDF)
 │   ├── PROJECT_PLAN.md            # Development timeline & milestones
 │   ├── PHASE_1_GUIDE.md           # Phase 1: CPU baseline guide
 │   ├── PHASE_2_GUIDE.md           # Phase 2: GPU implementation guide
@@ -165,12 +197,13 @@ PP-Final_Project/
 ├── external/                      # External libraries (LIBSVM, etc.)
 │
 └── build/                         # Build output directory (generated)
-    └── bin/                       # Compiled executables
-        ├── train_cpu.exe          # Main training executable
-        ├── test_dataloader.exe    # Data loader tests
-        ├── test_layers.exe        # Layer tests
-        └── test_autoencoder.exe   # Autoencoder tests
-``` build/                      # Build output (generated)
+    ├── test_dataloader            # Data loader tests
+    ├── test_layers                # Layer tests (CPU)
+    ├── test_autoencoder           # Autoencoder tests (CPU)
+    ├── test_layers_gpu            # Layer tests (GPU)
+    ├── test_autoencoder_gpu       # Autoencoder tests (GPU)
+    ├── train_cpu                  # CPU training executable
+    └── train_gpu                  # GPU training executable
 ```
 
 
