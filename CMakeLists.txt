@@ -106,13 +106,7 @@ target_link_libraries(train_cpu OpenMP::OpenMP_CXX)
 target_link_libraries(test_layers OpenMP::OpenMP_CXX)
 target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX)
 
-# Add CUDA support if available
-if(CUDA_AVAILABLE)     
-    target_link_libraries(train_cpu CUDA::cudart)
-    target_compile_definitions(train_cpu PRIVATE USE_CUDA)
-endif()
-
-
+# CPU Compile Options
 if(MSVC)
     target_compile_options(train_cpu PRIVATE /W4 /O2 /openmp)
     target_compile_options(test_layers PRIVATE /W4 /O2 /openmp)
@@ -122,6 +116,135 @@ else()
     target_compile_options(test_layers PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
     target_compile_options(test_autoencoder PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
 endif()
+
+# Add CUDA support if available
+if(CUDA_AVAILABLE)
+    # GPU Layer Sources
+    set(GPU_LAYER_SOURCES
+        src/layers_gpu/conv2d_gpu.cu
+        src/layers_gpu/maxpool_gpu.cu
+        src/layers_gpu/relu_gpu.cu
+        src/layers_gpu/upsample_gpu.cu
+        src/layers_gpu/mse_loss_gpu.cu
+    )
+
+    set(GPU_MODEL_SOURCES
+        src/models/autoencode_gpu.cu
+    )
+
+    # # GPU Training Executable
+    # add_executable(train_gpu
+    #     src/train_gpu.cu
+    #     ${DATA_SOURCES}
+    #     ${UTILS_SOURCES}
+    #     ${GPU_LAYER_SOURCES}
+    #     ${GPU_MODEL_SOURCES}
+    # )
+
+    # # Set CUDA properties - RTX 4060 is Ada (SM 89)
+    # set_target_properties(train_gpu PROPERTIES
+    #     CUDA_SEPARABLE_COMPILATION ON
+    #     CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+    # )
+
+    # # Include directories for CUDA
+    # target_include_directories(train_gpu PRIVATE 
+    #     ${CMAKE_SOURCE_DIR}/include
+    #     ${CMAKE_SOURCE_DIR}/src
+    # )
+
+    # # Link libraries
+    # target_link_libraries(train_gpu 
+    #     CUDA::cudart
+    #     OpenMP::OpenMP_CXX
+    # )
+
+    # target_compile_definitions(train_gpu PRIVATE USE_CUDA)
+
+    # # CUDA-specific compile options
+    # if(MSVC)
+    #     target_compile_options(train_gpu PRIVATE 
+    #         $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2 /openmp>
+    #         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
+    #     )
+    # else()
+    #     target_compile_options(train_gpu PRIVATE 
+    #         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -march=native -fopenmp>
+    #         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3,-fopenmp>
+    #     )
+    # endif()
+
+    # message(STATUS "GPU training executable 'train_gpu' will be built")
+
+    # =============================================================================
+    # GPU Test Executables
+    # =============================================================================
+    
+    # Test GPU Layers
+    add_executable(test_layers_gpu
+        tests/test_layers_gpu.cu
+        ${GPU_LAYER_SOURCES}
+    )
+
+    set_target_properties(test_layers_gpu PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+    )
+
+    target_include_directories(test_layers_gpu PRIVATE 
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_link_libraries(test_layers_gpu CUDA::cudart)
+    target_compile_definitions(test_layers_gpu PRIVATE USE_CUDA)
+
+    # Test GPU Autoencoder
+    add_executable(test_autoencoder_gpu
+        tests/test_autoencoder_gpu.cu
+        ${GPU_LAYER_SOURCES}
+        ${GPU_MODEL_SOURCES}
+    )
+
+    set_target_properties(test_autoencoder_gpu PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "89"  # Ada Lovelace (RTX 4060)
+    )
+
+    target_include_directories(test_autoencoder_gpu PRIVATE 
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_link_libraries(test_autoencoder_gpu CUDA::cudart)
+    target_compile_definitions(test_autoencoder_gpu PRIVATE USE_CUDA)
+
+    if(MSVC)
+        target_compile_options(test_layers_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
+        )
+        target_compile_options(test_autoencoder_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
+        )
+    else()
+        target_compile_options(test_layers_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3>
+        )
+        target_compile_options(test_autoencoder_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3>
+        )
+    endif()
+
+    message(STATUS "GPU test executables 'test_layers_gpu' and 'test_autoencoder_gpu' will be built")
+     
+    target_link_libraries(train_cpu CUDA::cudart)
+    target_compile_definitions(train_cpu PRIVATE USE_CUDA)
+endif()
+
 
 # Create data directory
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
