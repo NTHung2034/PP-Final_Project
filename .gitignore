@@ -1,5 +1,6 @@
 .prompts
 
-data
+/data
 
-build
+/build
+
