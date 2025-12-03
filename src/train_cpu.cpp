@@ -21,25 +21,14 @@ int main()
     std::cout << "\n========================================\n";
     std::cout << "  CIFAR-10 Autoencoder Training\n";
     std::cout << "  Phase 1: CPU Baseline\n";
-    if (TEST_MODE)
-    {
-        std::cout << "  MODE: TEST (Limited data)\n";
-    }
-    else
-    {
-        std::cout << "  MODE: FULL TRAINING\n";
-    }
+    std::cout << "  MODE: FULL TRAINING\n";
+
     std::cout << "========================================\n\n";
 
     LOG_INFO("Starting CIFAR-10 Autoencoder Training (CPU Baseline)");
 
     try
     {
-        // Configuration
-        const int epochs = TEST_MODE ? TEST_EPOCHS : EPOCHS;
-        const int batch_size = TEST_MODE ? TEST_BATCH_SIZE : BATCH_SIZE;
-        const float learning_rate = LEARNING_RATE;
-
         // Step 1: Load dataset
         std::cout << "[1/5] Loading CIFAR-10 dataset...\n";
         auto load_start = std::chrono::high_resolution_clock::now();
@@ -89,32 +78,32 @@ int main()
         // Step 4: Training loop
         std::cout << "[4/5] Training autoencoder...\n";
         std::cout << "      Configuration:\n";
-        std::cout << "      - Epochs: " << epochs << "\n";
-        std::cout << "      - Batch size: " << batch_size << "\n";
-        std::cout << "      - Batches per epoch: " << (TEST_MODE ? TEST_BATCHES_PER_EPOCH : train_dataset.size() / batch_size) << "\n";
-        std::cout << "      - Learning rate: " << learning_rate << "\n";
-        std::cout << "      - Total images per epoch: " << (TEST_MODE ? TEST_BATCHES_PER_EPOCH * batch_size : train_dataset.size()) << "\n\n";
+        std::cout << "      - Epochs: " << EPOCHS << "\n";
+        std::cout << "      - Batch size: " << BATCH_SIZE << "\n";
+        std::cout << "      - Batches per epoch: " << (train_dataset.size() / BATCH_SIZE) << "\n";
+        std::cout << "      - Learning rate: " << LEARNING_RATE << "\n";
+        std::cout << "      - Total images per epoch: " << (train_dataset.size()) << "\n\n";
 
         std::vector<float> epoch_losses;
         auto training_start = std::chrono::high_resolution_clock::now();
 
-        for (int epoch = 0; epoch < epochs; ++epoch)
+        for (int epoch = 0; epoch < EPOCHS; ++epoch)
         {
             auto epoch_start = std::chrono::high_resolution_clock::now();
 
             train_dataset.shuffle();
             train_dataset.reset();
 
-            const int batches_per_epoch = TEST_MODE ? TEST_BATCHES_PER_EPOCH : (train_dataset.size() / batch_size);
+            const int batches_per_epoch = train_dataset.size() / BATCH_SIZE;
             double epoch_loss = 0.0;
             int batch_count = 0;
 
-            std::cout << "Epoch " << (epoch + 1) << "/" << epochs << ":\n";
+            std::cout << "Epoch " << (epoch + 1) << "/" << EPOCHS << ":\n";
 
             for (int batch = 0; batch < batches_per_epoch; ++batch)
             {
                 // Get batch
-                auto images = train_dataset.get_batch(batch_size);
+                auto images = train_dataset.get_batch(BATCH_SIZE);
 
                 // Forward pass
                 auto output = model.forward(images);
@@ -123,7 +112,7 @@ int main()
                 batch_count++;
 
                 // Backward pass
-                model.backward(images, learning_rate);
+                model.backward(images, LEARNING_RATE);
 
                 // Print progress
                 std::cout << "  Batch " << std::setw(3) << (batch + 1) << "/" << batches_per_epoch
@@ -160,7 +149,7 @@ int main()
         // Create new model and load weights
         AutoencoderCPU loaded_model;
         std::string final_weights = std::string(MODEL_SAVE_DIR) + "/cpu_encoder_epoch_" +
-                                    std::to_string(epochs) + ".bin";
+                                    std::to_string(EPOCHS) + ".bin";
         loaded_model.load_weights(final_weights);
         std::cout << "      ✓ Loaded weights from: " << final_weights << "\n";
 
@@ -201,11 +190,11 @@ int main()
         std::ofstream summary(summary_file);
         summary << "CIFAR-10 Autoencoder Training Summary\n";
         summary << "======================================\n\n";
-        summary << "Mode: " << (TEST_MODE ? "TEST" : "FULL") << "\n";
-        summary << "Epochs: " << epochs << "\n";
-        summary << "Batch size: " << batch_size << "\n";
-        summary << "Learning rate: " << learning_rate << "\n";
-        summary << "Images per epoch: " << (TEST_MODE ? TEST_BATCHES_PER_EPOCH * batch_size : train_dataset.size()) << "\n";
+        summary << "Mode: FULL" << "\n";
+        summary << "Epochs: " << EPOCHS << "\n";
+        summary << "Batch size: " << BATCH_SIZE << "\n";
+        summary << "Learning rate: " << LEARNING_RATE << "\n";
+        summary << "Images per epoch: " << train_dataset.size() << "\n";
         summary << "Total training time: " << training_time << "s\n\n";
         summary << "Epoch Losses:\n";
         for (size_t i = 0; i < epoch_losses.size(); ++i)
@@ -222,7 +211,7 @@ int main()
         std::cout << "========================================\n\n";
         std::cout << "✓ Data loading: " << load_time << "s\n";
         std::cout << "✓ Model initialization: SUCCESS\n";
-        std::cout << "✓ Training: " << training_time << "s (" << epochs << " epochs)\n";
+        std::cout << "✓ Training: " << training_time << "s (" << EPOCHS << " epochs)\n";
         std::cout << "✓ Weight persistence: VERIFIED\n";
         std::cout << "✓ Feature extraction: VERIFIED\n\n";
         std::cout << "Loss progression:\n";
@@ -238,12 +227,6 @@ int main()
             std::cout << "\n";
         }
         std::cout << "\n";
-
-        if (TEST_MODE)
-        {
-            std::cout << "Note: Running in TEST mode (limited data).\n";
-            std::cout << "      To run full training, set TEST_MODE = false and recompile.\n\n";
-        }
 
         LOG_INFO("Training completed successfully!");
     }
