@@ -107,7 +107,6 @@ Tensor Conv2DCPU::backward(const Tensor &grad_output)
     int out_w = grad_output.width();
 
     // Compute gradients
-#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
         for (int oc = 0; oc < out_c_; ++oc)
@@ -118,9 +117,6 @@ Tensor Conv2DCPU::backward(const Tensor &grad_output)
                 {
                     int out_idx = ((n * out_c_ + oc) * out_h + oh) * out_w + ow;
                     float grad_out = grad_out_data[out_idx];
-
-                    // Gradient w.r.t. bias
-#pragma omp atomic
                     grad_b_[oc] += grad_out;
 
                     // Gradient w.r.t. weights and input
@@ -138,12 +134,7 @@ Tensor Conv2DCPU::backward(const Tensor &grad_output)
                                     int in_idx = ((n * in_c_ + ic) * in_h + ih) * in_w + iw;
                                     int w_idx = ((oc * in_c_ + ic) * k_size_ + kh) * k_size_ + kw;
 
-                                    // Gradient w.r.t. weights
-#pragma omp atomic
                                     grad_w_[w_idx] += grad_out * in_data[in_idx];
-
-                                    // Gradient w.r.t. input
-#pragma omp atomic
                                     grad_in_data[in_idx] += grad_out * weights_[w_idx];
                                 }
                             }

@@ -18,7 +18,7 @@ Tensor UpsampleCPU::forward(const Tensor &input)
 
     const float *in_data = input.data->data();
     float *out_data = output.data->data();
-#pragma omp parallel for collapse(2)
+
     for (int n = 0; n < batch; ++n)
     {
         for (int c = 0; c < channels; ++c)
@@ -61,8 +61,6 @@ Tensor UpsampleCPU::backward(const Tensor &grad_output)
     int out_h = in_h * scale_;
     int out_w = in_w * scale_;
 
-    // Sum gradients from all upsampled positions back to original position
-#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
         for (int c = 0; c < channels; ++c)
@@ -78,8 +76,6 @@ Tensor UpsampleCPU::backward(const Tensor &grad_output)
                     int in_idx = ((n * channels + c) * in_h + ih) * in_w + iw;
                     int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
 
-// Accumulate gradient (atomic not needed with proper indexing)
-#pragma omp atomic
                     grad_in_data[in_idx] += grad_out_data[out_idx];
                 }
             }
