@@ -43,9 +43,6 @@ Tensor Conv2DCPU::forward(const Tensor &input)
     float *out_data = output.data->data();
     const float *in_data = input.data->data();
 
-    // OpenMP, parallel over CPU cores, combines first 2 loops (rule-of-thumb)
-
-#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
         for (int oc = 0; oc < out_c_; ++oc)

@@ -8,7 +8,6 @@ Tensor ReLUCPU::forward(const Tensor &input)
     float *data = output.data->data();
     size_t size = output.size();
 
-#pragma omp parallel for
     for (size_t i = 0; i < size; ++i)
     {
         data[i] = std::max(0.0f, data[i]);
@@ -25,7 +24,6 @@ Tensor ReLUCPU::backward(const Tensor &grad_output)
     float *grad_data = grad_input.data->data();
 
     size_t size = grad_input.size();
-#pragma omp parallel for
     for (size_t i = 0; i < size; ++i)
     {
         grad_data[i] = (input_data[i] > 0.0f) ? grad_data[i] : 0.0f;

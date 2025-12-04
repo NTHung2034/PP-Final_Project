@@ -21,7 +21,6 @@ Tensor MaxPoolCPU::forward(const Tensor &input)
     const float *in_data = input.data->data();
     float *out_data = output.data->data();
 
-#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n)
     {
         for (int c = 0; c < channels; ++c)

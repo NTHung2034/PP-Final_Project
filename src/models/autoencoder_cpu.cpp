@@ -65,24 +65,6 @@ void AutoencoderCPU::backward(const Tensor &target, float learning_rate)
         grad_data[i] = scale * (grad_data[i] - target_data[i]);
     }
 
-    // Add Gradient clipping
-    constexpr float MAX_GRAD_NORM = 5.0f;
-    double grad_norm_sq = 0.0;
-
-    for (size_t i = 0; i < size; ++i)
-    {
-        grad_norm_sq += grad_data[i] * grad_data[i];
-    }
-
-    float grad_norm = std::sqrt(static_cast<float>(grad_norm_sq));
-    if (grad_norm > MAX_GRAD_NORM)
-    {
-        float clip_scale = MAX_GRAD_NORM / grad_norm;
-        for (size_t i = 0; i < size; ++i)
-        {
-            grad_data[i] *= clip_scale;
-        }
-    }
     // Backpropagate through decoder
     grad = conv5_->backward(grad);
     grad = up2_->backward(grad);
