@@ -132,49 +132,49 @@ if(CUDA_AVAILABLE)
         src/models/autoencode_gpu.cu
     )
 
-    # # GPU Training Executable
-    # add_executable(train_gpu
-    #     src/train_gpu.cu
-    #     ${DATA_SOURCES}
-    #     ${UTILS_SOURCES}
-    #     ${GPU_LAYER_SOURCES}
-    #     ${GPU_MODEL_SOURCES}
-    # )
+    # GPU Training Executable
+    add_executable(train_gpu
+        src/train_gpu.cu
+        ${DATA_SOURCES}
+        ${UTILS_SOURCES}
+        ${GPU_LAYER_SOURCES}
+        ${GPU_MODEL_SOURCES}
+    )
 
-    # # Set CUDA properties - RTX 4060 is Ada (SM 89)
-    # set_target_properties(train_gpu PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "75;80;89"  
-    # )
+    # Set CUDA properties - RTX 4060 is Ada (SM 89)
+    set_target_properties(train_gpu PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "75;80;89"  
+    )
 
-    # # Include directories for CUDA
-    # target_include_directories(train_gpu PRIVATE 
-    #     ${CMAKE_SOURCE_DIR}/include
-    #     ${CMAKE_SOURCE_DIR}/src
-    # )
+    # Include directories for CUDA
+    target_include_directories(train_gpu PRIVATE 
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
 
-    # # Link libraries
-    # target_link_libraries(train_gpu 
-    #     CUDA::cudart
-    #     OpenMP::OpenMP_CXX
-    # )
+    # Link libraries
+    target_link_libraries(train_gpu 
+        CUDA::cudart
+        OpenMP::OpenMP_CXX
+    )
 
-    # target_compile_definitions(train_gpu PRIVATE USE_CUDA)
+    target_compile_definitions(train_gpu PRIVATE USE_CUDA)
 
-    # # CUDA-specific compile options
-    # if(MSVC)
-    #     target_compile_options(train_gpu PRIVATE 
-    #         $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2 /openmp>
-    #         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
-    #     )
-    # else()
-    #     target_compile_options(train_gpu PRIVATE 
-    #         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -march=native -fopenmp>
-    #         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3,-fopenmp>
-    #     )
-    # endif()
+    # CUDA-specific compile options
+    if(MSVC)
+        target_compile_options(train_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2 /openmp>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
+        )
+    else()
+        target_compile_options(train_gpu PRIVATE 
+            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -march=native -fopenmp>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3,-fopenmp>
+        )
+    endif()
 
-    # message(STATUS "GPU training executable 'train_gpu' will be built")
+    message(STATUS "GPU training executable 'train_gpu' will be built")
 
     # =============================================================================
     # GPU Test Executables
