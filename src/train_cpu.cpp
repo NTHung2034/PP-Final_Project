@@ -186,7 +186,7 @@ int main()
                   << "D per image\n\n";
 
         // Save training summary
-        std::string summary_file = std::string(MODEL_SAVE_DIR) + "/training_summary.txt";
+        std::string summary_file = std::string(MODEL_SAVE_DIR) + "/training_summary_cpu.txt";
         std::ofstream summary(summary_file);
         summary << "CIFAR-10 Autoencoder Training Summary\n";
         summary << "======================================\n\n";
@@ -204,6 +204,19 @@ int main()
         summary.close();
 
         std::cout << "✓ Training summary saved: " << summary_file << "\n\n";
+
+        // Print training summary to screen
+        std::cout << "\n========================================\n";
+        std::cout << "  TRAINING SUMMARY (CPU)\n";
+        std::cout << "========================================\n\n";
+        std::ifstream summary_read(summary_file);
+        std::string line;
+        while (std::getline(summary_read, line))
+        {
+            std::cout << line << "\n";
+        }
+        summary_read.close();
+        std::cout << "========================================\n\n";
 
         // Final summary
         std::cout << "\n========================================\n";
