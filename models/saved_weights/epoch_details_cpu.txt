@@ -3,78 +3,78 @@ CIFAR-10 Autoencoder - Epoch-by-Epoch Training Details (CPU)
 
 Configuration:
   - Total epochs: 10
-  - Images per epoch: 320
+  - Images per epoch: 1000
   - Batch size: 32
   - Learning rate: 0.001
 
 =============================================================
 
 Epoch 1/10:
-  Time: 276.98 seconds
-  Average Loss: 0.215818
-  Throughput: 1.2 images/sec
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_1.bin
+  Time: 939.17 seconds
+  Average Loss: 0.147295
+  Throughput: 1.1 images/sec
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_1.bin
 
 Epoch 2/10:
-  Time: 190.25 seconds
-  Average Loss: 0.134801
-  Throughput: 1.7 images/sec
-  Loss change from previous epoch: 37.54%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_2.bin
+  Time: 941.00 seconds
+  Average Loss: 0.098212
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 33.32%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_2.bin
 
 Epoch 3/10:
-  Time: 190.69 seconds
-  Average Loss: 0.123188
-  Throughput: 1.7 images/sec
-  Loss change from previous epoch: 8.62%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_3.bin
+  Time: 937.06 seconds
+  Average Loss: 0.085944
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 12.49%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_3.bin
 
 Epoch 4/10:
-  Time: 522.53 seconds
-  Average Loss: 0.106575
-  Throughput: 0.6 images/sec
-  Loss change from previous epoch: 13.49%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_4.bin
+  Time: 936.87 seconds
+  Average Loss: 0.077758
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 9.52%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_4.bin
 
 Epoch 5/10:
-  Time: 395.96 seconds
-  Average Loss: 0.102845
-  Throughput: 0.8 images/sec
-  Loss change from previous epoch: 3.50%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_5.bin
+  Time: 937.32 seconds
+  Average Loss: 0.073191
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 5.87%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_5.bin
 
 Epoch 6/10:
-  Time: 326.04 seconds
-  Average Loss: 0.093534
-  Throughput: 1.0 images/sec
-  Loss change from previous epoch: 9.05%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_6.bin
+  Time: 937.38 seconds
+  Average Loss: 0.068547
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 6.35%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_6.bin
 
 Epoch 7/10:
-  Time: 499.81 seconds
-  Average Loss: 0.091020
-  Throughput: 0.6 images/sec
-  Loss change from previous epoch: 2.69%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_7.bin
+  Time: 937.06 seconds
+  Average Loss: 0.066092
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 3.58%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_7.bin
 
 Epoch 8/10:
-  Time: 425.95 seconds
-  Average Loss: 0.083883
-  Throughput: 0.8 images/sec
-  Loss change from previous epoch: 7.84%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_8.bin
+  Time: 937.41 seconds
+  Average Loss: 0.060522
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 8.43%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_8.bin
 
 Epoch 9/10:
-  Time: 397.31 seconds
-  Average Loss: 0.080217
-  Throughput: 0.8 images/sec
-  Loss change from previous epoch: 4.37%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_9.bin
+  Time: 937.70 seconds
+  Average Loss: 0.061078
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: -0.92%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_9.bin
 
 Epoch 10/10:
-  Time: 339.64 seconds
-  Average Loss: 0.081353
-  Throughput: 0.9 images/sec
-  Loss change from previous epoch: -1.42%
-  Weights saved to: D:/University/Parallel_programming/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_10.bin
+  Time: 938.28 seconds
+  Average Loss: 0.059614
+  Throughput: 1.1 images/sec
+  Loss change from previous epoch: 2.40%
+  Weights saved to: /content/PP-Final_Project/models/saved_weights/cpu_encoder_epoch_10.bin
 

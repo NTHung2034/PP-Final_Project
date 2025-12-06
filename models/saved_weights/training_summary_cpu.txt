@@ -4,34 +4,34 @@ CIFAR-10 Autoencoder Training Summary (CPU)
 Configuration:
   Mode: REDUCED (CPU Baseline)
   Epochs: 10
-  Images per epoch: 320
-  Test images: 64
+  Images per epoch: 1000
+  Test images: 200
   Batch size: 32
   Learning rate: 0.001
 
 Performance:
-  Total training time: 3565.30s (59.42 min)
-  Average time per epoch: 356.53s
-  Overall throughput: 0.9 images/sec
+  Total training time: 9379.31s (156.32 min)
+  Average time per epoch: 937.93s
+  Overall throughput: 1.1 images/sec
 
 Loss Progression:
-  Initial loss (Epoch 1): 0.215817
-  Final loss (Epoch 10): 0.081353
-  Total reduction: 62.30%
+  Initial loss (Epoch 1): 0.147295
+  Final loss (Epoch 10): 0.059614
+  Total reduction: 59.53%
 
 Epoch Details:
   Epoch |    Loss    |  Time(s)  | Throughput(img/s)
   ------|------------|-----------|------------------
-      1 |   0.215817 |    276.98 |              1.2
-      2 |   0.134801 |    190.25 |              1.7
-      3 |   0.123188 |    190.69 |              1.7
-      4 |   0.106575 |    522.53 |              0.6
-      5 |   0.102845 |    395.96 |              0.8
-      6 |   0.093534 |    326.04 |              1.0
-      7 |   0.091020 |    499.81 |              0.6
-      8 |   0.083883 |    425.95 |              0.8
-      9 |   0.080217 |    397.31 |              0.8
-     10 |   0.081353 |    339.64 |              0.9
+      1 |   0.147295 |    939.17 |              1.1
+      2 |   0.098212 |    941.00 |              1.1
+      3 |   0.085944 |    937.06 |              1.1
+      4 |   0.077758 |    936.87 |              1.1
+      5 |   0.073191 |    937.32 |              1.1
+      6 |   0.068547 |    937.38 |              1.1
+      7 |   0.066092 |    937.06 |              1.1
+      8 |   0.060522 |    937.41 |              1.1
+      9 |   0.061078 |    937.70 |              1.1
+     10 |   0.059614 |    938.28 |              1.1
 
 Files Generated:
   - Weights: cpu_encoder_epoch_1.bin to cpu_encoder_epoch_10.bin
