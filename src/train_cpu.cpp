@@ -9,8 +9,8 @@
 #include <fstream>
 
 // CPU Training Configuration (reduced for faster execution)
-constexpr int CPU_TRAIN_IMAGES = 10000;
-constexpr int CPU_TEST_IMAGES = 2000;
+constexpr int CPU_TRAIN_IMAGES = 1000;
+constexpr int CPU_TEST_IMAGES = 200;
 constexpr int CPU_EPOCHS = 10;
 
 int main()
