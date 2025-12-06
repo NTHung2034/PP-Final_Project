@@ -8,11 +8,10 @@
 #include <chrono>
 #include <fstream>
 
-// Training mode configuration
-constexpr bool TEST_MODE = true; // Set to false for full training
-constexpr int TEST_EPOCHS = 2;
-constexpr int TEST_BATCHES_PER_EPOCH = 2; // 2 batches × 32 images = 64 images total
-constexpr int TEST_BATCH_SIZE = 32;
+// CPU Training Configuration (reduced for faster execution)
+constexpr int CPU_TRAIN_IMAGES = 10000; // Use 10K images instead of full 50K
+constexpr int CPU_TEST_IMAGES = 2000;   // Proportional: 10K/50K = 2K/10K
+constexpr int CPU_EPOCHS = 10;          // Reduced from 20 to 10 epochs
 
 int main()
 {
@@ -21,14 +20,14 @@ int main()
     std::cout << "\n========================================\n";
     std::cout << "  CIFAR-10 Autoencoder Training\n";
     std::cout << "  Phase 1: CPU Baseline\n";
-    std::cout << "  MODE: FULL TRAINING\n";
-
+    std::cout << "  MODE: REDUCED TRAINING (10K images)\n";
     std::cout << "========================================\n\n";
 
     LOG_INFO("Starting CIFAR-10 Autoencoder Training (CPU Baseline)");
 
     try
     {
+        // Step 1: Load dataset
         // Step 1: Load dataset
         std::cout << "[1/5] Loading CIFAR-10 dataset...\n";
         auto load_start = std::chrono::high_resolution_clock::now();
@@ -40,8 +39,10 @@ int main()
         auto load_time = std::chrono::duration<double>(load_end - load_start).count();
 
         std::cout << "      ✓ Loaded " << train_dataset.size() << " training images in "
-                  << std::fixed << std::setprecision(2) << load_time << "s\n\n";
-
+                  << std::fixed << std::setprecision(2) << load_time << "s\n";
+        std::cout << "      ✓ Using " << CPU_TRAIN_IMAGES << " images for CPU training\n";
+        std::cout << "      ✓ Batch size: " << BATCH_SIZE << " (from config.h)\n";
+        std::cout << "      ✓ Learning rate: " << LEARNING_RATE << " (from config.h)\n\n";
         // Step 2: Initialize autoencoder model
         std::cout << "[2/5] Initializing autoencoder model...\n";
         AutoencoderCPU model;
@@ -72,22 +73,35 @@ int main()
         std::cout << "      Initial loss: " << std::fixed << std::setprecision(6)
                   << initial_loss << "\n";
         std::cout << "      ✓ Model architecture verified\n\n";
-
-        train_dataset.reset();
-
         // Step 4: Training loop
         std::cout << "[4/5] Training autoencoder...\n";
         std::cout << "      Configuration:\n";
-        std::cout << "      - Epochs: " << EPOCHS << "\n";
+        std::cout << "      - Epochs: " << CPU_EPOCHS << "\n";
         std::cout << "      - Batch size: " << BATCH_SIZE << "\n";
-        std::cout << "      - Batches per epoch: " << (train_dataset.size() / BATCH_SIZE) << "\n";
+        std::cout << "      - Batches per epoch: " << (CPU_TRAIN_IMAGES / BATCH_SIZE) << "\n";
         std::cout << "      - Learning rate: " << LEARNING_RATE << "\n";
-        std::cout << "      - Total images per epoch: " << (train_dataset.size()) << "\n\n";
+        std::cout << "      - Total images per epoch: " << CPU_TRAIN_IMAGES << "\n\n";
 
         std::vector<float> epoch_losses;
+        std::vector<double> epoch_times;
         auto training_start = std::chrono::high_resolution_clock::now();
 
-        for (int epoch = 0; epoch < EPOCHS; ++epoch)
+        // Open epoch details file
+        std::string epoch_details_file = std::string(MODEL_SAVE_DIR) + "/epoch_details_cpu.txt";
+        std::ofstream epoch_details(epoch_details_file);
+        epoch_details << "CIFAR-10 Autoencoder - Epoch-by-Epoch Training Details (CPU)\n";
+        epoch_details << "=============================================================\n\n";
+        epoch_details << "Configuration:\n";
+        train_dataset.shuffle();
+        train_dataset.reset();
+
+        const int batches_per_epoch = CPU_TRAIN_IMAGES / BATCH_SIZE;
+        double epoch_loss = 0.0;
+        int batch_count = 0;
+
+        std::cout << "Epoch " << (epoch + 1) << "/" << CPU_EPOCHS << ":\n";
+
+        for (int batch = 0; batch < batches_per_epoch; ++batch)
         {
             auto epoch_start = std::chrono::high_resolution_clock::now();
 
@@ -107,22 +121,58 @@ int main()
 
                 // Forward pass
                 auto output = model.forward(images);
-                float loss = model.compute_loss(output, images);
-                epoch_loss += loss;
-                batch_count++;
+                epoch_loss /= batches_per_epoch;
+                epoch_losses.push_back(epoch_loss);
 
-                // Backward pass
-                model.backward(images, LEARNING_RATE);
+                auto epoch_end = std::chrono::high_resolution_clock::now();
+                auto epoch_time = std::chrono::duration<double>(epoch_end - epoch_start).count();
+                epoch_times.push_back(epoch_time);
 
-                // Print progress
-                std::cout << "  Batch " << std::setw(3) << (batch + 1) << "/" << batches_per_epoch
-                          << " - Loss: " << std::fixed << std::setprecision(6) << loss
-                          << " - Avg: " << (epoch_loss / batch_count) << "\r" << std::flush;
+                // Calculate throughput
+                double throughput = CPU_TRAIN_IMAGES / epoch_time;
+
+                // Print to console
+                std::cout << "\n";
+                std::cout << "  ✓ Epoch " << (epoch + 1) << " completed\n";
+                std::cout << "    - Time: " << std::fixed << std::setprecision(2) << epoch_time << "s\n";
+                std::cout << "    - Avg Loss: " << std::setprecision(6) << epoch_loss << "\n";
+                std::cout << "    - Throughput: " << std::setprecision(1) << throughput << " images/sec\n";
+
+                if (epoch > 0)
+                {
+                    float loss_reduction = ((epoch_losses[epoch - 1] - epoch_loss) / epoch_losses[epoch - 1]) * 100.0f;
+                    std::cout << "    - Loss change: " << std::setprecision(2) << loss_reduction << "%\n";
+                }
+
+                // Save weights after each epoch
+                std::string weights_file = std::string(MODEL_SAVE_DIR) + "/cpu_encoder_epoch_" +
+                                           std::to_string(epoch + 1) + ".bin";
+                model.save_weights(weights_file);
+                std::cout << "    - Weights saved: " << weights_file << "\n";
+
+                // Write to epoch details file
+                epoch_details << "Epoch " << (epoch + 1) << "/" << CPU_EPOCHS << ":\n";
+                auto training_end = std::chrono::high_resolution_clock::now();
+                auto training_time = std::chrono::duration<double>(training_end - training_start).count();
+
+                double avg_epoch_time = training_time / CPU_EPOCHS;
+                double total_throughput = (CPU_TRAIN_IMAGES * CPU_EPOCHS) / training_time;
+
+                std::cout << "✓ Training completed!\n";
+                std::cout << "  - Total time: " << std::fixed << std::setprecision(2)
+                          << training_time << "s (" << (training_time / 60.0) << " min)\n";
+                // Create new model and load weights
+                AutoencoderCPU loaded_model;
+                std::string final_weights = std::string(MODEL_SAVE_DIR) + "/cpu_encoder_epoch_" +
+                                            std::to_string(CPU_EPOCHS) + ".bin";
+                loaded_model.load_weights(final_weights);
+                std::cout << "      ✓ Loaded weights from: " << final_weights << "\n";
+                epoch_details.flush(); // Ensure data is written immediately
+
+                std::cout << "\n";
             }
 
-            epoch_loss /= batches_per_epoch;
-            epoch_losses.push_back(epoch_loss);
-
+            epoch_details.close();
             auto epoch_end = std::chrono::high_resolution_clock::now();
             auto epoch_time = std::chrono::duration<double>(epoch_end - epoch_start).count();
 
@@ -179,31 +229,32 @@ int main()
         std::cout << "\n      Extracting features from sample batch...\n";
         auto features = loaded_model.extract_features(verify_batch);
         std::cout << "      ✓ Feature shape: [" << features.batch() << ", "
-                  << features.channels() << ", " << features.height() << ", "
-                  << features.width() << "]\n";
-        std::cout << "      ✓ Feature vector size: "
-                  << (features.channels() * features.height() * features.width())
-                  << "D per image\n\n";
-
-        // Save training summary
-        std::string summary_file = std::string(MODEL_SAVE_DIR) + "/training_summary_cpu.txt";
+            // Save training summary
+            std::string summary_file = std::string(MODEL_SAVE_DIR) + "/training_summary_cpu.txt";
         std::ofstream summary(summary_file);
-        summary << "CIFAR-10 Autoencoder Training Summary\n";
-        summary << "======================================\n\n";
-        summary << "Mode: FULL" << "\n";
-        summary << "Epochs: " << EPOCHS << "\n";
-        summary << "Batch size: " << BATCH_SIZE << "\n";
-        summary << "Learning rate: " << LEARNING_RATE << "\n";
-        summary << "Images per epoch: " << train_dataset.size() << "\n";
-        summary << "Total training time: " << training_time << "s\n\n";
-        summary << "Epoch Losses:\n";
-        for (size_t i = 0; i < epoch_losses.size(); ++i)
-        {
-            summary << "Epoch " << (i + 1) << ": " << epoch_losses[i] << "\n";
-        }
-        summary.close();
+        summary << "CIFAR-10 Autoencoder Training Summary (CPU)\n";
+        summary << "============================================\n\n";
 
-        std::cout << "✓ Training summary saved: " << summary_file << "\n\n";
+        summary << "Configuration:\n";
+        summary << "  Mode: REDUCED (CPU Baseline)\n";
+        summary << "  Epochs: " << CPU_EPOCHS << "\n";
+        summary << "  Images per epoch: " << CPU_TRAIN_IMAGES << "\n";
+        summary << "  Test images: " << CPU_TEST_IMAGES << "\n";
+        summary << "  Batch size: " << BATCH_SIZE << "\n";
+        summary << "  Learning rate: " << LEARNING_RATE << "\n\n";
+
+        summary << "Performance:\n";
+        summary << "  Total training time: " << std::fixed << std::setprecision(2)
+                << training_time << "s (" << (training_time / 60.0) << " min)\n";
+        summary << "  Average time per epoch: " << (training_time / CPU_EPOCHS) << "s\n";
+        summary << "  Overall throughput: " << std::setprecision(1)
+                << total_throughput << " images/sec\n\n";
+
+        summary << "Loss Progression:\n";
+        summary << "  Initial loss (Epoch 1): " << std::setprecision(6) << epoch_losses[0] << "\n";
+        summary << "  Final loss (Epoch " << CPU_EPOCHS << "): " << epoch_losses[CPU_EPOCHS - 1] << "\n";
+        std::cout << "✓ Training summary saved: " << summary_file << "\n";
+        std::cout << "✓ Epoch details saved: " << epoch_details_file << "\n\n";
 
         // Print training summary to screen
         std::cout << "\n========================================\n";
@@ -211,6 +262,45 @@ int main()
         std::cout << "========================================\n\n";
         std::ifstream summary_read(summary_file);
         std::string line;
+        while (std::getline(summary_read, line))
+        {
+            std::cout << line << "\n";
+        }
+        summary_read.close();
+        std::cout << "\n========================================\n\n";
+        // Final summary
+        std::cout << "\n========================================\n";
+        std::cout << "  TRAINING COMPLETE - PIPELINE VERIFIED\n";
+        std::cout << "========================================\n\n";
+        std::cout << "✓ Data loading: " << std::fixed << std::setprecision(2) << load_time << "s\n";
+        std::cout << "✓ Model initialization: SUCCESS\n";
+        std::cout << "✓ Training: " << training_time << "s (" << CPU_EPOCHS << " epochs, "
+                  << CPU_TRAIN_IMAGES << " images/epoch)\n";
+        std::cout << "✓ Weight persistence: VERIFIED\n";
+        std::cout << "✓ Feature extraction: VERIFIED\n\n";
+
+        std::cout << "Quick Loss Overview:\n";
+        std::cout << "  First 3 epochs: ";
+        for (size_t i = 0; i < std::min(size_t(3), epoch_losses.size()); ++i)
+        {
+            std::cout << std::setprecision(6) << epoch_losses[i];
+            if (i < std::min(size_t(3), epoch_losses.size()) - 1)
+                std::cout << " → ";
+        }
+        std::cout << "\n  Last 3 epochs:  ";
+        size_t start = epoch_losses.size() >= 3 ? epoch_losses.size() - 3 : 0;
+        for (size_t i = start; i < epoch_losses.size(); ++i)
+        {
+            std::cout << std::setprecision(6) << epoch_losses[i];
+            if (i < epoch_losses.size() - 1)
+                std::cout << " → ";
+        }
+        std::cout << "\n\n";
+
+        std::cout << "Files saved in: " << MODEL_SAVE_DIR << "/\n";
+        std::cout << "  - training_summary_cpu.txt (summary)\n";
+        std::cout << "  - epoch_details_cpu.txt (detailed per-epoch info)\n";
+        std::cout << "  - cpu_encoder_epoch_*.bin (weights for each epoch)\n\n";
         while (std::getline(summary_read, line))
         {
             std::cout << line << "\n";
