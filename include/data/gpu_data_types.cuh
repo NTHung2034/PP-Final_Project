@@ -1,5 +1,4 @@
-#ifndef GPU_DATA_TYPES_CUH
-#define GPU_DATA_TYPES_CUH
+#pragma once
 
 #include <cuda_runtime.h>
 #include <cstdio>
@@ -164,5 +163,3 @@ struct GPUConvWeights {
         CUDA_CHECK(cudaMemsetAsync(d_grad_b, 0, bias_size * sizeof(float), stream));
     }
 };
-
-#endif // GPU_DATA_TYPES_H

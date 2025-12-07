@@ -1,5 +1,4 @@
-#ifndef MSE_LOSS_GPU_CUH
-#define MSE_LOSS_GPU_CUH
+#pragma once
 
 #include "data/gpu_data_types.cuh"
 #include <cuda_runtime.h>
@@ -45,4 +44,3 @@ void mse_loss_backward_gpu(
     GPUTensor& grad,
     cudaStream_t stream = 0);
 
-#endif // MSE_LOSS_GPU_CUH

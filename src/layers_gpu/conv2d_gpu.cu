@@ -1,4 +1,3 @@
-#include "gpu_data_types.cuh"
 #include <stdio.h>
 
 // OPTIMIZED CONV2D KERNEL - FIXED VERSION FOR TESLA T4

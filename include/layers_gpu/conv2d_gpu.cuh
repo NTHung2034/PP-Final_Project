@@ -1,7 +1,6 @@
-#ifndef CONV2D_GPU_CUH
-#define CONV2D_GPU_CUH
+#pragma once
 
-#include "gpu_data_types.cuh"
+#include "data/gpu_data_types.cuh"
 
 // Forward pass for 2D convolution with optional ReLU activation
 
@@ -66,5 +65,3 @@ inline void calc_conv2d_output_size(
     out_h = (in_h + 2 * padding - kernel_h) / stride + 1;
     out_w = (in_w + 2 * padding - kernel_w) / stride + 1;
 }
-
-#endif
