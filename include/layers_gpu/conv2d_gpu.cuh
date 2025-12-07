@@ -1,38 +1,22 @@
 #ifndef CONV2D_GPU_CUH
 #define CONV2D_GPU_CUH
 
-#include "data/gpu_data_types.cuh"
-#include <cuda_runtime.h>
+#include "gpu_data_types.cuh"
 
-/**
- * =============================================================================
- * CONV2D GPU LAYER - Header
- * =============================================================================
- * 
- * Optimized Conv2D implementation with shared memory tiling
- * Includes fused Conv2D + Bias + ReLU kernel
- */
+// Forward pass for 2D convolution with optional ReLU activation
 
-// Tile size for shared memory (must match block dimensions in implementation)
-#define TILE_WIDTH 16
-#define TILE_HEIGHT 16
+// Performs: output = ReLU(Conv2D(input, weights) + bias)
 
-/**
- * Conv2D Forward Pass
- * 
- * Performs convolution with optional ReLU activation (kernel fusion)
- * Uses shared memory tiling for improved memory access efficiency
- * 
- * @param input       Input tensor [N, C_in, H_in, W_in]
- * @param weights     Convolution weights and biases
- * @param output      Output tensor [N, C_out, H_out, W_out]
- * @param kernel_h    Kernel height
- * @param kernel_w    Kernel width
- * @param padding     Padding size
- * @param stride      Stride size
- * @param apply_relu  Whether to apply ReLU activation (fused)
- * @param stream      CUDA stream for async execution
- */
+// input Input tensor [N, C_in, H_in, W_in]
+// weights Convolution weights [C_out, C_in, kH, kW]
+// output Output tensor [N, C_out, H_out, W_out]
+// kernel_h Kernel height
+// kernel_w Kernel width
+// padding Padding applied to input (same on all sides)
+// stride Stride for convolution
+// apply_relu Whether to apply ReLU activation
+// stream CUDA stream for asynchronous execution
+
 void conv2d_forward_gpu(
     const GPUTensor& input,
     const GPUConvWeights& weights,
@@ -40,33 +24,47 @@ void conv2d_forward_gpu(
     int kernel_h, int kernel_w,
     int padding, int stride,
     bool apply_relu,
-    cudaStream_t stream = 0);
+    cudaStream_t stream = 0
+);
 
-/**
- * Conv2D Backward Pass
- * 
- * Computes gradients for:
- * - Input (for backpropagation)
- * - Weights (for parameter update)
- * - Bias (for parameter update)
- * 
- * @param input        Original input tensor
- * @param grad_output  Gradient from next layer
- * @param weights      Convolution weights (gradients stored here)
- * @param grad_input   Gradient w.r.t. input
- * @param kernel_h     Kernel height
- * @param kernel_w     Kernel width
- * @param padding      Padding size
- * @param stride       Stride size
- * @param stream       CUDA stream for async execution
- */
-void conv2d_backward_gpu(
+
+// Backward pass for 2D convolution
+// 
+// Computes:
+// - grad_input: gradient w.r.t. input
+// - grad_weights: gradient w.r.t. weights (accumulated)
+// - grad_bias: gradient w.r.t. bias (accumulated)
+// 
+// input Original input tensor [N, C_in, H_in, W_in]
+// grad_output Gradient w.r.t. output [N, C_out, H_out, W_out]
+// weights Convolution weights (also stores gradients)
+// grad_input Output: gradient w.r.t. input [N, C_in, H_in, W_in]
+// kernel_h Kernel height
+// kernel_w Kernel width
+// padding Padding applied to input
+// stride Stride for convolution
+// stream CUDA stream for asynchronous execution
+
+ void conv2d_backward_gpu(
     const GPUTensor& input,
     const GPUTensor& grad_output,
     GPUConvWeights& weights,
     GPUTensor& grad_input,
     int kernel_h, int kernel_w,
     int padding, int stride,
-    cudaStream_t stream = 0);
+    cudaStream_t stream = 0
+);
 
-#endif // CONV2D_GPU_CUH
+// Helper function to calculate output dimensions
+
+inline void calc_conv2d_output_size(
+    int in_h, int in_w,
+    int kernel_h, int kernel_w,
+    int padding, int stride,
+    int& out_h, int& out_w)
+{
+    out_h = (in_h + 2 * padding - kernel_h) / stride + 1;
+    out_w = (in_w + 2 * padding - kernel_w) / stride + 1;
+}
+
+#endif

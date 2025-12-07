@@ -157,6 +157,12 @@ struct GPUConvWeights {
         delete[] h_weights;
         delete[] h_bias;
     }
+    
+    // Zero out gradients (useful before backward pass)
+    void zeroGrad(cudaStream_t stream = 0) {
+        CUDA_CHECK(cudaMemsetAsync(d_grad_w, 0, weight_size * sizeof(float), stream));
+        CUDA_CHECK(cudaMemsetAsync(d_grad_b, 0, bias_size * sizeof(float), stream));
+    }
 };
 
 #endif // GPU_DATA_TYPES_H
