@@ -5,44 +5,44 @@
 
 /**
  * =============================================================================
- * UPSAMPLE2D GPU LAYER (Nearest Neighbor) - Header
+ * NAIVE UPSAMPLE GPU IMPLEMENTATION - PHASE 2
  * =============================================================================
  * 
- * Upsamples spatial dimensions using nearest neighbor interpolation
- * Default scale factor is 2x in both dimensions
+ * Simple nearest neighbor upsampling:
+ * - Each thread computes one output element
+ * - Maps output coordinates back to input (integer division)
+ * - Doubles spatial dimensions
  */
 
 /**
- * Upsample2D Forward Pass (Nearest Neighbor)
+ * Naive Upsample2D Forward Pass
  * 
- * Each output pixel copies from its nearest input pixel
- * Output dimensions: H_out = H_in * scale_factor, W_out = W_in * scale_factor
+ * Upsamples input by scale factor using nearest neighbor interpolation
+ * Each thread handles one output element
  * 
  * @param input        Input tensor [N, C, H_in, W_in]
- * @param output       Output tensor [N, C, H_out, W_out]
- * @param scale_factor Upsampling factor (default: 2)
+ * @param output       Output tensor [N, C, H_out, W_out] where H_out = H_in * scale
+ * @param scale_factor Upsampling factor (typically 2)
  * @param stream       CUDA stream for async execution
  */
-void upsample2d_forward_gpu(
+void upsample2d_forward_gpu_naive(
     const GPUTensor& input,
     GPUTensor& output,
     int scale_factor = 2,
     cudaStream_t stream = 0);
 
 /**
- * Upsample2D Backward Pass
+ * Naive Upsample2D Backward Pass
  * 
- * Accumulates gradients from all output pixels that map to same input pixel
- * Each input gradient is the sum of scale_factor^2 output gradients
+ * Accumulates gradients from upsampled positions back to original positions
  * 
  * @param grad_output  Gradient from next layer [N, C, H_out, W_out]
  * @param grad_input   Gradient w.r.t. input [N, C, H_in, W_in]
- * @param scale_factor Upsampling factor (default: 2)
+ * @param scale_factor Upsampling factor (typically 2)
  * @param stream       CUDA stream for async execution
  */
-void upsample2d_backward_gpu(
+void upsample2d_backward_gpu_naive(
     const GPUTensor& grad_output,
     GPUTensor& grad_input,
     int scale_factor = 2,
     cudaStream_t stream = 0);
-

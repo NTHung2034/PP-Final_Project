@@ -1,5 +1,4 @@
-#ifndef RELU_GPU_CUH
-#define RELU_GPU_CUH
+#pragma once
 
 #include "data/gpu_data_types.cuh"
 #include <cuda_runtime.h>
@@ -42,4 +41,3 @@ void relu_backward_gpu(
     GPUTensor& grad_input,
     cudaStream_t stream = 0);
 
-#endif // RELU_GPU_CUH
