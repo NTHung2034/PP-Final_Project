@@ -20,7 +20,6 @@ namespace ImageUtils
         const float *image_data,
         int height,
         int width,
-        int channels,
         const std::string &filepath);
 
     // Create a side-by-side comparison image
@@ -29,7 +28,6 @@ namespace ImageUtils
         const float *reconstructed,
         int height,
         int width,
-        int channels,
         const std::string &filepath);
 
     // Calculate PSNR (Peak Signal-to-Noise Ratio) between two images

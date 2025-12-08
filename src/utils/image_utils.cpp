@@ -15,7 +15,7 @@
 namespace ImageUtils
 {
 
-    void save_image_ppm(const float *image_data, int height, int width, int channels, const std::string &filepath)
+    void save_image_ppm(const float *image_data, int height, int width, const std::string &filepath)
     {
         std::ofstream file(filepath, std::ios::binary);
         if (!file.is_open())
@@ -49,7 +49,7 @@ namespace ImageUtils
     }
 
     void save_comparison_ppm(const float *original, const float *reconstructed,
-                             int height, int width, int channels, const std::string &filepath)
+                             int height, int width, const std::string &filepath)
     {
         std::ofstream file(filepath, std::ios::binary);
         if (!file.is_open())
