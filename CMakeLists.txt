@@ -51,6 +51,8 @@ set(DATA_SOURCES
 
 set(UTILS_SOURCES
     src/utils/logger.cpp
+    src/utils/image_utils.cpp
+    src/utils/memory_tracker.cpp
     # src/utils/memory_pool.cpp  
 )
 

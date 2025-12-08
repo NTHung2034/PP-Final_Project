@@ -2,6 +2,8 @@
 #include "data/cifar10_dataset.h"
 #include "data/data_utils.h"
 #include "utils/logger.h"
+#include "utils/image_utils.h"
+#include "utils/memory_tracker.h"
 #include "config.h"
 #include <iostream>
 #include <iomanip>
@@ -16,6 +18,7 @@ constexpr int CPU_EPOCHS = 10;
 int main()
 {
     LOG_INIT();
+    MemoryTracker::init();
 
     std::cout << "\n========================================\n";
     std::cout << "  CIFAR-10 Autoencoder Training\n";
@@ -24,6 +27,9 @@ int main()
     std::cout << "========================================\n\n";
 
     LOG_INFO("Starting CIFAR-10 Autoencoder Training (CPU Baseline)");
+
+    size_t initial_memory = MemoryTracker::get_current_usage();
+    std::cout << "Initial memory usage: " << MemoryTracker::format_bytes(initial_memory) << "\n\n";
 
     try
     {
@@ -37,18 +43,25 @@ int main()
         auto load_end = std::chrono::high_resolution_clock::now();
         auto load_time = std::chrono::duration<double>(load_end - load_start).count();
 
+        size_t after_load_memory = MemoryTracker::get_current_usage();
+
         std::cout << "      ✓ Loaded " << train_dataset.size() << " training images in "
                   << std::fixed << std::setprecision(2) << load_time << "s\n";
         std::cout << "      ✓ Using " << CPU_TRAIN_IMAGES << " images for CPU training\n";
         std::cout << "      ✓ Batch size: " << BATCH_SIZE << " (from config.h)\n";
-        std::cout << "      ✓ Learning rate: " << LEARNING_RATE << " (from config.h)\n\n";
+        std::cout << "      ✓ Learning rate: " << LEARNING_RATE << " (from config.h)\n";
+        std::cout << "      ✓ Memory after loading: " << MemoryTracker::format_bytes(after_load_memory) << "\n\n";
 
         // Step 2: Initialize autoencoder model
         std::cout << "[2/5] Initializing autoencoder model...\n";
         AutoencoderCPU model;
+
+        size_t after_model_memory = MemoryTracker::get_current_usage();
+
         std::cout << "      ✓ Encoder: Conv(3→256)→ReLU→Pool→Conv(256→128)→ReLU→Pool\n";
         std::cout << "      ✓ Latent: 8×8×128 = 8,192 features\n";
-        std::cout << "      ✓ Decoder: Conv(128→128)→ReLU→Up→Conv(128→256)→ReLU→Up→Conv(256→3)\n\n";
+        std::cout << "      ✓ Decoder: Conv(128→128)→ReLU→Up→Conv(128→256)→ReLU→Up→Conv(256→3)\n";
+        std::cout << "      ✓ Memory after model init: " << MemoryTracker::format_bytes(after_model_memory) << "\n\n";
 
         // Step 3: Verify forward pass
         std::cout << "[3/5] Verifying model architecture...\n";
@@ -87,6 +100,9 @@ int main()
 
         std::vector<float> epoch_losses;
         std::vector<double> epoch_times;
+        std::vector<size_t> epoch_memory;
+        std::vector<float> epoch_psnr;
+        std::vector<float> epoch_ssim;
         auto training_start = std::chrono::high_resolution_clock::now();
 
         // Open epoch details file
@@ -98,7 +114,8 @@ int main()
         epoch_details << "  - Total epochs: " << CPU_EPOCHS << "\n";
         epoch_details << "  - Images per epoch: " << CPU_TRAIN_IMAGES << "\n";
         epoch_details << "  - Batch size: " << BATCH_SIZE << "\n";
-        epoch_details << "  - Learning rate: " << LEARNING_RATE << "\n\n";
+        epoch_details << "  - Learning rate: " << LEARNING_RATE << "\n";
+        epoch_details << "  - Initial memory: " << MemoryTracker::format_bytes(initial_memory) << "\n\n";
         epoch_details << "=============================================================\n\n";
 
         for (int epoch = 0; epoch < CPU_EPOCHS; ++epoch)
@@ -141,6 +158,23 @@ int main()
             auto epoch_time = std::chrono::duration<double>(epoch_end - epoch_start).count();
             epoch_times.push_back(epoch_time);
 
+            // Get memory usage
+            size_t current_memory = MemoryTracker::get_current_usage();
+            epoch_memory.push_back(current_memory);
+
+            // Calculate reconstruction quality metrics on a sample batch
+            auto sample_batch = train_dataset.get_batch(8);
+            auto sample_output = model.forward(sample_batch);
+            float psnr = ImageUtils::calculate_psnr(sample_batch, sample_output);
+            float ssim = ImageUtils::calculate_ssim(sample_batch, sample_output);
+            epoch_psnr.push_back(psnr);
+            epoch_ssim.push_back(ssim);
+
+            // Save reconstruction samples every epoch
+            std::string sample_prefix = "epoch_" + std::to_string(epoch + 1);
+            ImageUtils::save_reconstruction_samples(sample_batch, sample_output,
+                                                    MODEL_SAVE_DIR, sample_prefix, 4);
+
             // Calculate throughput
             double throughput = CPU_TRAIN_IMAGES / epoch_time;
 
@@ -149,7 +183,10 @@ int main()
             std::cout << "  ✓ Epoch " << (epoch + 1) << " completed\n";
             std::cout << "    - Time: " << std::fixed << std::setprecision(2) << epoch_time << "s\n";
             std::cout << "    - Avg Loss: " << std::setprecision(6) << epoch_loss << "\n";
+            std::cout << "    - PSNR: " << std::setprecision(2) << psnr << " dB\n";
+            std::cout << "    - SSIM: " << std::setprecision(4) << ssim << "\n";
             std::cout << "    - Throughput: " << std::setprecision(1) << throughput << " images/sec\n";
+            std::cout << "    - Memory: " << MemoryTracker::format_bytes(current_memory) << "\n";
 
             if (epoch > 0)
             {
@@ -167,13 +204,17 @@ int main()
             epoch_details << "Epoch " << (epoch + 1) << "/" << CPU_EPOCHS << ":\n";
             epoch_details << "  Time: " << std::fixed << std::setprecision(2) << epoch_time << " seconds\n";
             epoch_details << "  Average Loss: " << std::setprecision(6) << epoch_loss << "\n";
+            epoch_details << "  PSNR: " << std::setprecision(2) << psnr << " dB\n";
+            epoch_details << "  SSIM: " << std::setprecision(4) << ssim << "\n";
             epoch_details << "  Throughput: " << std::setprecision(1) << throughput << " images/sec\n";
+            epoch_details << "  Memory Usage: " << MemoryTracker::format_bytes(current_memory) << "\n";
             if (epoch > 0)
             {
                 float loss_reduction = ((epoch_losses[epoch - 1] - epoch_loss) / epoch_losses[epoch - 1]) * 100.0f;
-                epoch_details << "  Loss change from previous epoch: " << std::setprecision(2) << loss_reduction << "%\n";
+                epoch_details << "  Loss Reduction: " << std::setprecision(2) << loss_reduction << "%\n";
             }
-            epoch_details << "  Weights saved to: " << weights_file << "\n";
+            epoch_details << "  Weights File: cpu_encoder_epoch_" << (epoch + 1) << ".bin\n";
+            epoch_details << "  Sample Images: " << sample_prefix << "_sample_*.ppm\n";
             epoch_details << "\n";
             epoch_details.flush(); // Ensure data is written immediately
 
@@ -257,20 +298,36 @@ int main()
         summary << "  Overall throughput: " << std::setprecision(1)
                 << total_throughput << " images/sec\n\n";
 
+        summary << "Memory Usage:\n";
+        summary << "  Initial memory: " << MemoryTracker::format_bytes(initial_memory) << "\n";
+        summary << "  After data loading: " << MemoryTracker::format_bytes(after_load_memory) << "\n";
+        summary << "  After model init: " << MemoryTracker::format_bytes(after_model_memory) << "\n";
+        summary << "  Peak memory: " << MemoryTracker::format_bytes(MemoryTracker::get_peak_usage()) << "\n";
+        summary << "  Final memory: " << MemoryTracker::format_bytes(epoch_memory.back()) << "\n\n";
+
         summary << "Loss Progression:\n";
         summary << "  Initial loss (Epoch 1): " << std::setprecision(6) << epoch_losses[0] << "\n";
         summary << "  Final loss (Epoch " << CPU_EPOCHS << "): " << epoch_losses[CPU_EPOCHS - 1] << "\n";
         summary << "  Total reduction: " << std::setprecision(2)
                 << ((epoch_losses[0] - epoch_losses[CPU_EPOCHS - 1]) / epoch_losses[0] * 100.0f) << "%\n\n";
 
+        summary << "Reconstruction Quality:\n";
+        summary << "  Initial PSNR (Epoch 1): " << std::setprecision(2) << epoch_psnr[0] << " dB\n";
+        summary << "  Final PSNR (Epoch " << CPU_EPOCHS << "): " << epoch_psnr[CPU_EPOCHS - 1] << " dB\n";
+        summary << "  Initial SSIM (Epoch 1): " << std::setprecision(4) << epoch_ssim[0] << "\n";
+        summary << "  Final SSIM (Epoch " << CPU_EPOCHS << "): " << epoch_ssim[CPU_EPOCHS - 1] << "\n\n";
+
         summary << "Epoch Details:\n";
-        summary << "  Epoch |    Loss    |  Time(s)  | Throughput(img/s)\n";
-        summary << "  ------|------------|-----------|------------------\n";
+        summary << "  Epoch |    Loss    |  PSNR(dB) |   SSIM   |  Time(s)  | Memory(MB) | Throughput(img/s)\n";
+        summary << "  ------|------------|-----------|----------|-----------|------------|------------------\n";
         for (size_t i = 0; i < epoch_losses.size(); ++i)
         {
             summary << "  " << std::setw(5) << (i + 1) << " | "
                     << std::fixed << std::setprecision(6) << std::setw(10) << epoch_losses[i] << " | "
+                    << std::setprecision(2) << std::setw(9) << epoch_psnr[i] << " | "
+                    << std::setprecision(4) << std::setw(8) << epoch_ssim[i] << " | "
                     << std::setprecision(2) << std::setw(9) << epoch_times[i] << " | "
+                    << std::setw(10) << (epoch_memory[i] / (1024 * 1024)) << " | "
                     << std::setprecision(1) << std::setw(16) << (CPU_TRAIN_IMAGES / epoch_times[i]) << "\n";
         }
         summary << "\n";
@@ -278,6 +335,7 @@ int main()
         summary << "Files Generated:\n";
         summary << "  - Weights: cpu_encoder_epoch_1.bin to cpu_encoder_epoch_" << CPU_EPOCHS << ".bin\n";
         summary << "  - Epoch details: epoch_details_cpu.txt\n";
+        summary << "  - Sample reconstructions: epoch_*_sample_*.ppm (4 samples per epoch)\n";
         summary << "  - This summary: training_summary_cpu.txt\n";
 
         summary.close();
