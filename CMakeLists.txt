@@ -39,6 +39,7 @@ endif()
 
 # Project Directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/external/libsvm)
 
 # Define project root path for use in code
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
@@ -53,8 +54,14 @@ set(UTILS_SOURCES
     src/utils/logger.cpp
     src/utils/image_utils.cpp
     src/utils/memory_tracker.cpp
+    src/utils/svm_classifier.cpp
     # src/utils/memory_pool.cpp  
 )
+
+# LIBSVM library
+set(LIBSVM_DIR ${CMAKE_SOURCE_DIR}/external/libsvm)
+add_library(svm STATIC ${LIBSVM_DIR}/svm.cpp)
+target_include_directories(svm PUBLIC ${LIBSVM_DIR})
 
 set(LAYER_SOURCES
     src/layers/conv2d_cpu.cpp
@@ -103,10 +110,11 @@ add_executable(train_cpu
 
 #####################################################################
 
-# Link OpenMP
-target_link_libraries(train_cpu OpenMP::OpenMP_CXX)
-target_link_libraries(test_layers OpenMP::OpenMP_CXX)
-target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX)
+# Link OpenMP and LIBSVM
+target_link_libraries(train_cpu OpenMP::OpenMP_CXX svm)
+target_link_libraries(test_layers OpenMP::OpenMP_CXX svm)
+target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX svm)
+target_link_libraries(test_dataloader svm)
 
 # TODO: see if this needed on Colab
 # # Link psapi for Windows memory tracking

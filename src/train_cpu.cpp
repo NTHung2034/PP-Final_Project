@@ -4,16 +4,23 @@
 #include "utils/logger.h"
 #include "utils/image_utils.h"
 #include "utils/memory_tracker.h"
+#include "utils/svm_classifier.h"
 #include "config.h"
 #include <iostream>
 #include <iomanip>
 #include <chrono>
 #include <fstream>
+#include <algorithm>
 
 // CPU Training Configuration (reduced for faster execution)
 constexpr int CPU_TRAIN_IMAGES = 1000;
 constexpr int CPU_TEST_IMAGES = 200;
 constexpr int CPU_EPOCHS = 10;
+
+// CIFAR-10 class names
+const char *CIFAR10_CLASSES[] = {
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck"};
 
 int main()
 {
@@ -75,11 +82,11 @@ int main()
                   << test_output.channels() << ", " << test_output.height() << ", "
                   << test_output.width() << "]\n";
 
-        auto test_features = model.extract_features(test_batch);
-        std::cout << "      Feature shape: [" << test_features.batch() << ", "
-                  << test_features.channels() << ", " << test_features.height() << ", "
-                  << test_features.width() << "] = "
-                  << (test_features.channels() * test_features.height() * test_features.width())
+        auto verify_features = model.extract_features(test_batch);
+        std::cout << "      Feature shape: [" << verify_features.batch() << ", "
+                  << verify_features.channels() << ", " << verify_features.height() << ", "
+                  << verify_features.width() << "] = "
+                  << (verify_features.channels() * verify_features.height() * verify_features.width())
                   << "D\n";
 
         float initial_loss = model.compute_loss(test_output, test_batch);
@@ -391,6 +398,190 @@ int main()
         std::cout << "  - cpu_encoder_epoch_*.bin (weights for each epoch)\n\n";
 
         LOG_INFO("Training completed successfully!");
+
+        // ========================================================================
+        // PHASE 2: CLASSIFICATION WITH SVM
+        // ========================================================================
+
+        std::cout << "\n========================================\n";
+        std::cout << "  PHASE 2: SVM CLASSIFICATION\n";
+        std::cout << "========================================\n\n";
+
+        LOG_INFO("Starting SVM classification pipeline");
+
+        // Step 6: Extract features from training set
+        std::cout << "[6/8] Extracting features from training set...\n";
+        auto feature_start = std::chrono::high_resolution_clock::now();
+
+        train_dataset.reset();
+        std::vector<std::vector<float>> train_features;
+        std::vector<int> train_labels;
+        train_features.reserve(CPU_TRAIN_IMAGES);
+        train_labels.reserve(CPU_TRAIN_IMAGES);
+
+        int feature_batches = CPU_TRAIN_IMAGES / BATCH_SIZE;
+        for (int batch = 0; batch < feature_batches; ++batch)
+        {
+            auto images = train_dataset.get_batch(BATCH_SIZE);
+            auto labels = train_dataset.get_batch_labels(BATCH_SIZE);
+            auto batch_features = loaded_model.extract_features(images);
+
+            // Convert to vector format (flatten features)
+            for (int i = 0; i < BATCH_SIZE; ++i)
+            {
+                std::vector<float> feat_vec(8192);
+                int offset = i * 8192;
+                std::copy_n(batch_features.raw_data() + offset, 8192, feat_vec.begin());
+                train_features.push_back(std::move(feat_vec));
+                train_labels.push_back(labels[i]);
+            }
+
+            std::cout << "      Extracted features: " << train_features.size() << "/" << CPU_TRAIN_IMAGES << "\r" << std::flush;
+        }
+
+        auto feature_end = std::chrono::high_resolution_clock::now();
+        auto feature_time = std::chrono::duration<double>(feature_end - feature_start).count();
+
+        std::cout << "\n      ✓ Extracted " << train_features.size() << " feature vectors (8192-dim each)\n";
+        std::cout << "      ✓ Feature extraction time: " << std::fixed << std::setprecision(2)
+                  << feature_time << "s\n\n";
+
+        // Step 7: Train SVM classifier
+        std::cout << "[7/8] Training SVM classifier...\n";
+        auto svm_train_start = std::chrono::high_resolution_clock::now();
+
+        svm_model *svm = SVMClassifier::train_svm(train_features, train_labels, 10.0, 0.0001);
+
+        auto svm_train_end = std::chrono::high_resolution_clock::now();
+        auto svm_train_time = std::chrono::duration<double>(svm_train_end - svm_train_start).count();
+
+        if (!svm)
+        {
+            LOG_ERROR("SVM training failed");
+            return 1;
+        }
+
+        std::cout << "      ✓ SVM training completed in " << std::fixed << std::setprecision(1)
+                  << svm_train_time << "s\n\n";
+
+        // Save SVM model
+        std::string svm_model_file = std::string(MODEL_SAVE_DIR) + "/svm_model.bin";
+        SVMClassifier::save_model(svm, svm_model_file);
+
+        // Step 8: Test on test set
+        std::cout << "[8/8] Evaluating on test set...\n";
+
+        // Load test dataset
+        CIFAR10Dataset test_dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TEST);
+        test_dataset.load_data();
+        std::cout << "      ✓ Loaded " << test_dataset.size() << " test images\n";
+
+        // Extract test features
+        auto test_start = std::chrono::high_resolution_clock::now();
+        test_dataset.reset();
+
+        std::vector<std::vector<float>> test_features;
+        std::vector<int> test_true_labels;
+        test_features.reserve(CPU_TEST_IMAGES);
+        test_true_labels.reserve(CPU_TEST_IMAGES);
+
+        int test_batches = CPU_TEST_IMAGES / BATCH_SIZE;
+        for (int batch = 0; batch < test_batches; ++batch)
+        {
+            auto images = test_dataset.get_batch(BATCH_SIZE);
+            auto labels = test_dataset.get_batch_labels(BATCH_SIZE);
+            auto batch_features = loaded_model.extract_features(images);
+
+            for (int i = 0; i < BATCH_SIZE; ++i)
+            {
+                std::vector<float> feat_vec(8192);
+                int offset = i * 8192;
+                std::copy_n(batch_features.raw_data() + offset, 8192, feat_vec.begin());
+                test_features.push_back(std::move(feat_vec));
+                test_true_labels.push_back(labels[i]);
+            }
+        }
+
+        std::cout << "      ✓ Extracted " << test_features.size() << " test feature vectors\n";
+
+        // Predict
+        std::vector<int> test_predictions = SVMClassifier::predict(svm, test_features);
+
+        auto test_end = std::chrono::high_resolution_clock::now();
+        auto test_time = std::chrono::duration<double>(test_end - test_start).count();
+
+        std::cout << "      ✓ Prediction completed in " << std::fixed << std::setprecision(2)
+                  << test_time << "s\n\n";
+
+        // Calculate accuracy
+        float overall_accuracy = SVMClassifier::calculate_accuracy(test_true_labels, test_predictions);
+        std::vector<float> per_class_acc = SVMClassifier::calculate_per_class_accuracy(
+            test_true_labels, test_predictions, 10);
+
+        // Print results
+        std::cout << "========================================\n";
+        std::cout << "  CLASSIFICATION RESULTS\n";
+        std::cout << "========================================\n\n";
+
+        std::cout << "Overall Test Accuracy: " << std::fixed << std::setprecision(2)
+                  << (overall_accuracy * 100.0f) << "%\n\n";
+
+        std::cout << "Per-Class Accuracy:\n";
+        std::cout << "  Class        | Accuracy\n";
+        std::cout << "  -------------|----------\n";
+        for (int i = 0; i < 10; ++i)
+        {
+            std::cout << "  " << std::left << std::setw(12) << CIFAR10_CLASSES[i]
+                      << " | " << std::right << std::setw(6) << std::setprecision(2)
+                      << (per_class_acc[i] * 100.0f) << "%\n";
+        }
+
+        // Save classification results
+        std::string class_results_file = std::string(MODEL_SAVE_DIR) + "/classification_results_cpu.txt";
+        std::ofstream class_results(class_results_file);
+        class_results << "CIFAR-10 Classification Results (CPU)\n";
+        class_results << "======================================\n\n";
+
+        class_results << "Overall Test Accuracy: " << std::fixed << std::setprecision(2)
+                      << (overall_accuracy * 100.0f) << "%\n";
+        class_results << "Test samples: " << test_predictions.size() << "\n";
+        class_results << "Correct predictions: " << static_cast<int>(overall_accuracy * test_predictions.size()) << "\n\n";
+
+        class_results << "Per-Class Accuracy:\n";
+        class_results << "  Class        | Accuracy\n";
+        class_results << "  -------------|----------\n";
+        for (int i = 0; i < 10; ++i)
+        {
+            class_results << "  " << std::left << std::setw(12) << CIFAR10_CLASSES[i]
+                          << " | " << std::right << std::setw(6) << std::setprecision(2)
+                          << (per_class_acc[i] * 100.0f) << "%\n";
+        }
+
+        class_results << "\nTimings:\n";
+        class_results << "  Feature extraction (train): " << std::setprecision(2) << feature_time << "s\n";
+        class_results << "  SVM training: " << std::setprecision(1) << svm_train_time << "s\n";
+        class_results << "  Feature extraction + prediction (test): " << std::setprecision(2) << test_time << "s\n";
+
+        class_results.close();
+
+        std::cout << "\n✓ Classification results saved: " << class_results_file << "\n";
+
+        // Final complete summary
+        std::cout << "\n========================================\n";
+        std::cout << "  COMPLETE PIPELINE SUMMARY\n";
+        std::cout << "========================================\n\n";
+        std::cout << "✓ Autoencoder Training: " << std::fixed << std::setprecision(1) << training_time << "s\n";
+        std::cout << "✓ Feature Extraction: " << std::setprecision(2) << feature_time << "s\n";
+        std::cout << "✓ SVM Training: " << std::setprecision(1) << svm_train_time << "s\n";
+        std::cout << "✓ Test Classification: " << std::setprecision(2) << test_time << "s\n";
+        std::cout << "✓ Overall Accuracy: " << (overall_accuracy * 100.0f) << "%\n\n";
+
+        std::cout << "All results saved in: " << MODEL_SAVE_DIR << "/\n\n";
+
+        // Cleanup SVM model
+        SVMClassifier::free_model(svm);
+
+        LOG_INFO("Complete pipeline finished successfully!");
     }
     catch (const std::exception &e)
     {
