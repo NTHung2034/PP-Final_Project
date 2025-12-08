@@ -108,6 +108,15 @@ target_link_libraries(train_cpu OpenMP::OpenMP_CXX)
 target_link_libraries(test_layers OpenMP::OpenMP_CXX)
 target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX)
 
+# TODO: see if this needed on Colab
+# # Link psapi for Windows memory tracking
+# if(WIN32)
+#     target_link_libraries(train_cpu psapi)
+#     target_link_libraries(test_layers psapi)
+#     target_link_libraries(test_autoencoder psapi)
+#     target_link_libraries(test_dataloader psapi)
+# endif()
+
 # CPU Compile Options
 if(MSVC)
     target_compile_options(train_cpu PRIVATE /W4 /O2 /openmp)

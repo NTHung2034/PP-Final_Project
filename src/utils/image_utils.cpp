@@ -132,7 +132,7 @@ namespace ImageUtils
 
             // Save comparison image
             std::string filepath = output_dir + "/" + prefix + "_sample_" + std::to_string(i) + ".ppm";
-            save_comparison_ppm(orig_ptr, recon_ptr, height, width, channels, filepath);
+            save_comparison_ppm(orig_ptr, recon_ptr, height, width, filepath);
         }
 
         std::cout << "      ✓ Saved " << num_samples << " reconstruction samples to "

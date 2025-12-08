@@ -6,7 +6,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
+#ifdef _MSC_VER
 #pragma comment(lib, "psapi.lib")
+#endif
 #else
 #include <unistd.h>
 #include <sys/resource.h>
