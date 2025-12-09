@@ -15,7 +15,7 @@
 // CPU Training Configuration (reduced for faster execution)
 constexpr int CPU_TRAIN_IMAGES = 1000;
 constexpr int CPU_TEST_IMAGES = 200;
-constexpr int CPU_EPOCHS = 10;
+constexpr int CPU_EPOCHS = 2;
 
 // CIFAR-10 class names
 const char *CIFAR10_CLASSES[] = {
@@ -168,6 +168,9 @@ int main()
             // Get memory usage
             size_t current_memory = MemoryTracker::get_current_usage();
             epoch_memory.push_back(current_memory);
+
+            // Reset dataset to get fresh samples for visualization
+            train_dataset.reset();
 
             // Calculate reconstruction quality metrics on a sample batch
             auto sample_batch = train_dataset.get_batch(8);
