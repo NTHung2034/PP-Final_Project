@@ -466,20 +466,29 @@ int main()
 
         std::cout << "      ✓ SVM training completed in " << std::fixed << std::setprecision(1)
                   << svm_train_time << "s\n\n";
+        std::cout.flush();
 
         // Save SVM model
         std::string svm_model_file = std::string(MODEL_SAVE_DIR) + "/svm_model.bin";
         SVMClassifier::save_model(svm, svm_model_file);
+        std::cout << "      ✓ SVM model saved: " << svm_model_file << "\n";
+        std::cout.flush();
 
         // Step 8: Test on test set
-        std::cout << "[8/8] Evaluating on test set...\n";
+        std::cout << "\n[8/8] Evaluating on test set...\n";
+        std::cout.flush();
 
         // Load test dataset
+        std::cout << "      Loading test dataset...\n";
+        std::cout.flush();
         CIFAR10Dataset test_dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TEST);
         test_dataset.load_data();
         std::cout << "      ✓ Loaded " << test_dataset.size() << " test images\n";
+        std::cout.flush();
 
         // Extract test features
+        std::cout << "      Extracting features from test images...\n";
+        std::cout.flush();
         auto test_start = std::chrono::high_resolution_clock::now();
         test_dataset.reset();
 
@@ -489,6 +498,9 @@ int main()
         test_true_labels.reserve(CPU_TEST_IMAGES);
 
         int test_batches = CPU_TEST_IMAGES / BATCH_SIZE;
+        std::cout << "      Processing " << test_batches << " batches (" << CPU_TEST_IMAGES << " images)...\n";
+        std::cout.flush();
+
         for (int batch = 0; batch < test_batches; ++batch)
         {
             auto images = test_dataset.get_batch(BATCH_SIZE);
@@ -503,23 +515,40 @@ int main()
                 test_features.push_back(std::move(feat_vec));
                 test_true_labels.push_back(labels[i]);
             }
+
+            if ((batch + 1) % 2 == 0 || batch == test_batches - 1)
+            {
+                std::cout << "      Processed batch " << (batch + 1) << "/" << test_batches
+                          << " (" << test_features.size() << " samples)\n";
+                std::cout.flush();
+            }
         }
 
         std::cout << "      ✓ Extracted " << test_features.size() << " test feature vectors\n";
+        std::cout.flush();
 
         // Predict
+        std::cout << "      Running SVM predictions...\n";
+        std::cout.flush();
         std::vector<int> test_predictions = SVMClassifier::predict(svm, test_features);
+        std::cout << "      ✓ Predictions completed\n";
+        std::cout.flush();
 
         auto test_end = std::chrono::high_resolution_clock::now();
         auto test_time = std::chrono::duration<double>(test_end - test_start).count();
 
-        std::cout << "      ✓ Prediction completed in " << std::fixed << std::setprecision(2)
-                  << test_time << "s\n\n";
+        std::cout << "      ✓ Test evaluation completed in " << std::fixed << std::setprecision(2)
+                  << test_time << "s\n";
+        std::cout.flush();
 
         // Calculate accuracy
+        std::cout << "\n      Calculating accuracy metrics...\n";
+        std::cout.flush();
         float overall_accuracy = SVMClassifier::calculate_accuracy(test_true_labels, test_predictions);
         std::vector<float> per_class_acc = SVMClassifier::calculate_per_class_accuracy(
             test_true_labels, test_predictions, 10);
+        std::cout << "      ✓ Metrics calculated\n\n";
+        std::cout.flush();
 
         // Print results
         std::cout << "========================================\n";
