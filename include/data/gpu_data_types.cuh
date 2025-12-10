@@ -85,7 +85,7 @@ struct GPUTensor {
     // Get flattened index for 4D tensor
     // Memory layout: NCHW (batch, channel, height, width)
     __host__ __device__ inline int index(int n, int c, int h, int w) const {
-        return ((n * channels + c) * height + h) * width + w;
+        return (n * channels * height * width) + (c * height * width) + (h * width + w);
     }
 };
 
@@ -105,7 +105,7 @@ struct GPUConvWeights {
     size_t weight_size;
     size_t bias_size;
     
-    GPUConvWeights(int out_c, int in_c, int kh, int kw)
+    GPUConvWeights(int out_c, int in_c, int kh, int kw) 
         : out_channels(out_c), in_channels(in_c), kernel_h(kh), kernel_w(kw) {
         
         weight_size = out_c * in_c * kh * kw;

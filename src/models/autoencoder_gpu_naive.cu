@@ -3,11 +3,6 @@
 #include <vector>
 #include <cmath>
 
-/**
- * =============================================================================
- * NAIVE SGD WEIGHT UPDATE KERNEL - PHASE 2
- * =============================================================================
- */
 __global__ void sgd_update_kernel_naive(
     float* __restrict__ weights,
     const float* __restrict__ gradients,
@@ -21,31 +16,19 @@ __global__ void sgd_update_kernel_naive(
     }
 }
 
-/**
- * Naive SGD Update Launcher
- */
 void sgd_update_gpu_naive(
     float* d_weights,
     const float* d_gradients,
     float learning_rate,
-    int size,
-    cudaStream_t stream)
+    int size)
 {
     int threads = 256;
     int blocks = (size + threads - 1) / threads;
     
-    sgd_update_kernel_naive<<<blocks, threads, 0, stream>>>(
-        d_weights, d_gradients, learning_rate, size
-    );
+    sgd_update_kernel_naive<<<blocks, threads>>>(d_weights, d_gradients, learning_rate, size);
     
     CUDA_CHECK(cudaGetLastError());
 }
-
-/**
- * =============================================================================
- * NAIVE GPU AUTOENCODER IMPLEMENTATION - PHASE 2
- * =============================================================================
- */
 
 GPUAutoencoderNaive::GPUAutoencoderNaive() {
     // Initialize weights (3x3 kernels, padding=1, stride=1)
@@ -65,9 +48,6 @@ GPUAutoencoderNaive::GPUAutoencoderNaive() {
     // Pooling indices (allocated later)
     d_pool1_indices = nullptr;
     d_pool2_indices = nullptr;
-    
-    // Create single stream
-    CUDA_CHECK(cudaStreamCreate(&stream));
 }
 
 GPUAutoencoderNaive::~GPUAutoencoderNaive() {
@@ -79,8 +59,6 @@ GPUAutoencoderNaive::~GPUAutoencoderNaive() {
     
     if (d_pool1_indices) cudaFree(d_pool1_indices);
     if (d_pool2_indices) cudaFree(d_pool2_indices);
-    
-    cudaStreamDestroy(stream);
 }
 
 void GPUAutoencoderNaive::allocatePoolingIndices(int batch_size) {
@@ -114,20 +92,20 @@ void GPUAutoencoderNaive::forward_inference(const GPUTensor& input, GPUTensor& o
     CUDA_CHECK(cudaMalloc(&temp_pool2_idx, batch * 128 * 8 * 8 * sizeof(int)));
     
     // ENCODER - Using naive GPU kernels
-    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true, stream);
-    maxpool2d_forward_gpu_naive(act1, act2, temp_pool1_idx, stream);
-    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true, stream);
-    maxpool2d_forward_gpu_naive(act3, act4, temp_pool2_idx, stream);
+    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true);
+    maxpool2d_forward_gpu_naive(act1, act2, temp_pool1_idx);
+    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true);
+    maxpool2d_forward_gpu_naive(act3, act4, temp_pool2_idx);
     
     // DECODER - Using naive GPU kernels
-    conv2d_forward_gpu_naive(act4, *conv3, act5, 3, 3, 1, 1, true, stream);
-    upsample2d_forward_gpu_naive(act5, act6, 2, stream);
-    conv2d_forward_gpu_naive(act6, *conv4, act7, 3, 3, 1, 1, true, stream);
-    upsample2d_forward_gpu_naive(act7, act8, 2, stream);
-    conv2d_forward_gpu_naive(act8, *conv5, output, 3, 3, 1, 1, false, stream);
+    conv2d_forward_gpu_naive(act4, *conv3, act5, 3, 3, 1, 1, true);
+    upsample2d_forward_gpu_naive(act5, act6, 2);
+    conv2d_forward_gpu_naive(act6, *conv4, act7, 3, 3, 1, 1, true);
+    upsample2d_forward_gpu_naive(act7, act8, 2);
+    conv2d_forward_gpu_naive(act8, *conv5, output, 3, 3, 1, 1, false);
     
     // Wait for completion
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    CUDA_CHECK(cudaDeviceSynchronize());
     
     // Free temporary indices
     CUDA_CHECK(cudaFree(temp_pool1_idx));
@@ -145,19 +123,19 @@ void GPUAutoencoderNaive::extract_features(const GPUTensor& input, GPUTensor& fe
     int* temp_pool_idx;
     
     // Encoder forward pass with naive kernels
-    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true, stream);
+    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true);
     
     CUDA_CHECK(cudaMalloc(&temp_pool_idx, batch * 256 * 16 * 16 * sizeof(int)));
-    maxpool2d_forward_gpu_naive(act1, act2, temp_pool_idx, stream);
+    maxpool2d_forward_gpu_naive(act1, act2, temp_pool_idx);
     CUDA_CHECK(cudaFree(temp_pool_idx));
     
-    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true, stream);
+    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true);
     
     CUDA_CHECK(cudaMalloc(&temp_pool_idx, batch * 128 * 8 * 8 * sizeof(int)));
-    maxpool2d_forward_gpu_naive(act3, features, temp_pool_idx, stream);
+    maxpool2d_forward_gpu_naive(act3, features, temp_pool_idx);
     CUDA_CHECK(cudaFree(temp_pool_idx));
     
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 float GPUAutoencoderNaive::forward_backward_update(
@@ -182,82 +160,82 @@ float GPUAutoencoderNaive::forward_backward_update(
     // =========================================================================
     // FORWARD PASS - Using naive GPU kernels
     // =========================================================================
-    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true, stream);
-    maxpool2d_forward_gpu_naive(act1, act2, d_pool1_indices, stream);
-    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true, stream);
-    maxpool2d_forward_gpu_naive(act3, act4, d_pool2_indices, stream);
+    conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true);
+    maxpool2d_forward_gpu_naive(act1, act2, d_pool1_indices);
+    conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true);
+    maxpool2d_forward_gpu_naive(act3, act4, d_pool2_indices);
     
-    conv2d_forward_gpu_naive(act4, *conv3, act5, 3, 3, 1, 1, true, stream);
-    upsample2d_forward_gpu_naive(act5, act6, 2, stream);
-    conv2d_forward_gpu_naive(act6, *conv4, act7, 3, 3, 1, 1, true, stream);
-    upsample2d_forward_gpu_naive(act7, act8, 2, stream);
-    conv2d_forward_gpu_naive(act8, *conv5, output, 3, 3, 1, 1, false, stream);
+    conv2d_forward_gpu_naive(act4, *conv3, act5, 3, 3, 1, 1, true);
+    upsample2d_forward_gpu_naive(act5, act6, 2);
+    conv2d_forward_gpu_naive(act6, *conv4, act7, 3, 3, 1, 1, true);
+    upsample2d_forward_gpu_naive(act7, act8, 2);
+    conv2d_forward_gpu_naive(act8, *conv5, output, 3, 3, 1, 1, false);
     
     // Compute loss
-    float loss = mse_loss_forward_gpu_naive(output, target, stream);
+    float loss = mse_loss_forward_gpu_naive(output, target);
     
     // =========================================================================
     // BACKWARD PASS - Using naive GPU kernels
     // =========================================================================
     GPUTensor grad_output(batch, 3, 32, 32, true);
-    mse_loss_backward_gpu_naive(output, target, grad_output, stream);
+    mse_loss_backward_gpu_naive(output, target, grad_output);
     
     // Conv5 backward
     GPUTensor grad_act8(batch, 256, 32, 32, true);
-    conv2d_backward_gpu_naive(act8, grad_output, *conv5, grad_act8, 3, 3, 1, 1, stream);
+    conv2d_backward_gpu_naive(act8, grad_output, *conv5, grad_act8, 3, 3, 1, 1);
     
     // Upsample2 backward
     GPUTensor grad_act7(batch, 256, 16, 16, true);
-    upsample2d_backward_gpu_naive(grad_act8, grad_act7, 2, stream);
+    upsample2d_backward_gpu_naive(grad_act8, grad_act7, 2);
     
     // Conv4 backward
     GPUTensor grad_act6(batch, 128, 16, 16, true);
-    conv2d_backward_gpu_naive(act6, grad_act7, *conv4, grad_act6, 3, 3, 1, 1, stream);
+    conv2d_backward_gpu_naive(act6, grad_act7, *conv4, grad_act6, 3, 3, 1, 1);
     
     // Upsample1 backward
     GPUTensor grad_act5(batch, 128, 8, 8, true);
-    upsample2d_backward_gpu_naive(grad_act6, grad_act5, 2, stream);
+    upsample2d_backward_gpu_naive(grad_act6, grad_act5, 2);
     
     // Conv3 backward
     GPUTensor grad_act4(batch, 128, 8, 8, true);
-    conv2d_backward_gpu_naive(act4, grad_act5, *conv3, grad_act4, 3, 3, 1, 1, stream);
+    conv2d_backward_gpu_naive(act4, grad_act5, *conv3, grad_act4, 3, 3, 1, 1);
     
     // Pool2 backward
     GPUTensor grad_act3(batch, 128, 16, 16, true);
-    maxpool2d_backward_gpu_naive(grad_act4, d_pool2_indices, grad_act3, stream);
+    maxpool2d_backward_gpu_naive(grad_act4, d_pool2_indices, grad_act3);
     
     // Conv2 backward
     GPUTensor grad_act2(batch, 256, 16, 16, true);
-    conv2d_backward_gpu_naive(act2, grad_act3, *conv2, grad_act2, 3, 3, 1, 1, stream);
+    conv2d_backward_gpu_naive(act2, grad_act3, *conv2, grad_act2, 3, 3, 1, 1);
     
     // Pool1 backward
     GPUTensor grad_act1(batch, 256, 32, 32, true);
-    maxpool2d_backward_gpu_naive(grad_act2, d_pool1_indices, grad_act1, stream);
+    maxpool2d_backward_gpu_naive(grad_act2, d_pool1_indices, grad_act1);
     
     // Conv1 backward
     GPUTensor grad_input(batch, 3, 32, 32, true);
-    conv2d_backward_gpu_naive(input, grad_act1, *conv1, grad_input, 3, 3, 1, 1, stream);
+    conv2d_backward_gpu_naive(input, grad_act1, *conv1, grad_input, 3, 3, 1, 1);
     
     // =========================================================================
     // UPDATE WEIGHTS (SGD) - Using naive GPU kernel
     // =========================================================================
-    sgd_update_gpu_naive(conv1->d_weights, conv1->d_grad_w, learning_rate, conv1->weight_size, stream);
-    sgd_update_gpu_naive(conv1->d_bias, conv1->d_grad_b, learning_rate, conv1->bias_size, stream);
+    sgd_update_gpu_naive(conv1->d_weights, conv1->d_grad_w, learning_rate, conv1->weight_size);
+    sgd_update_gpu_naive(conv1->d_bias, conv1->d_grad_b, learning_rate, conv1->bias_size);
     
-    sgd_update_gpu_naive(conv2->d_weights, conv2->d_grad_w, learning_rate, conv2->weight_size, stream);
-    sgd_update_gpu_naive(conv2->d_bias, conv2->d_grad_b, learning_rate, conv2->bias_size, stream);
+    sgd_update_gpu_naive(conv2->d_weights, conv2->d_grad_w, learning_rate, conv2->weight_size);
+    sgd_update_gpu_naive(conv2->d_bias, conv2->d_grad_b, learning_rate, conv2->bias_size);
     
-    sgd_update_gpu_naive(conv3->d_weights, conv3->d_grad_w, learning_rate, conv3->weight_size, stream);
-    sgd_update_gpu_naive(conv3->d_bias, conv3->d_grad_b, learning_rate, conv3->bias_size, stream);
+    sgd_update_gpu_naive(conv3->d_weights, conv3->d_grad_w, learning_rate, conv3->weight_size);
+    sgd_update_gpu_naive(conv3->d_bias, conv3->d_grad_b, learning_rate, conv3->bias_size);
     
-    sgd_update_gpu_naive(conv4->d_weights, conv4->d_grad_w, learning_rate, conv4->weight_size, stream);
-    sgd_update_gpu_naive(conv4->d_bias, conv4->d_grad_b, learning_rate, conv4->bias_size, stream);
+    sgd_update_gpu_naive(conv4->d_weights, conv4->d_grad_w, learning_rate, conv4->weight_size);
+    sgd_update_gpu_naive(conv4->d_bias, conv4->d_grad_b, learning_rate, conv4->bias_size);
     
-    sgd_update_gpu_naive(conv5->d_weights, conv5->d_grad_w, learning_rate, conv5->weight_size, stream);
-    sgd_update_gpu_naive(conv5->d_bias, conv5->d_grad_b, learning_rate, conv5->bias_size, stream);
+    sgd_update_gpu_naive(conv5->d_weights, conv5->d_grad_w, learning_rate, conv5->weight_size);
+    sgd_update_gpu_naive(conv5->d_bias, conv5->d_grad_b, learning_rate, conv5->bias_size);
     
     // Synchronize before returning
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    CUDA_CHECK(cudaDeviceSynchronize());
     
     return loss;
 }
