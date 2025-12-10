@@ -1,15 +1,13 @@
 #include "models/autoencoder_gpu_naive.cuh"
-#include "data/cifar10_dataset.h"
-#include "utils/logger.h"
+#include "data/cifar10_loader.h"
 #include "config.h"
 
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <chrono>
 #include <vector>
 #include <string>
-#include <cmath>
+#include <cstring>
 
 // CUDA event-based timer for accurate GPU timing
 class CUDATimer {
@@ -150,7 +148,7 @@ void save_model_weights(GPUAutoencoderNaive& model, const std::string& output_di
 
 // Training function
 void train_autoencoder_gpu_naive(
-    CIFAR10Dataset& dataset,
+    CIFAR10Loader& loader,
     int batch_size,
     int epochs,
     float learning_rate,
@@ -163,7 +161,7 @@ void train_autoencoder_gpu_naive(
     std::cout << "  Batch size: " << batch_size << std::endl;
     std::cout << "  Epochs: " << epochs << std::endl;
     std::cout << "  Learning rate: " << learning_rate << std::endl;
-    std::cout << "  Training samples: " << dataset.size() << std::endl;
+    std::cout << "  Training samples: " << loader.train_size() << std::endl;
     std::cout << "  Save directory: " << save_dir << std::endl;
     std::cout << std::string(70, '=') << "\n" << std::endl;
     
@@ -187,34 +185,28 @@ void train_autoencoder_gpu_naive(
     TrainingStats stats;
     CUDATimer gpu_timer;
     
-    int num_batches = (dataset.size() + batch_size - 1) / batch_size;
+    int num_batches = loader.train_size() / batch_size;
     std::cout << "Batches per epoch: " << num_batches << "\n" << std::endl;
     
     // Main training loop
     for (int epoch = 0; epoch < epochs; epoch++) {
         gpu_timer.start();
         
-        dataset.shuffle();
-        dataset.reset();
+        loader.shuffle();
+        loader.reset();
         
         float epoch_loss = 0.0f;
         int batches_processed = 0;
         
         // Batch loop
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
-            Tensor cpu_batch = dataset.get_batch(batch_size);
-            int actual_batch_size = cpu_batch.shape[0];
+            // Get batch data pointer from loader
+            float* batch_data = loader.get_batch(batch_size);
+            if (!batch_data) break;
             
-            // Skip incomplete batches
-            if (actual_batch_size != batch_size) {
-                continue;
-            }
-            
-            // Create GPU tensor for input (and target, which is same as input for autoencoder)
+            // Create GPU tensor and copy data
             GPUTensor input(batch_size, 3, 32, 32, false);
-            
-            // Copy from CPU tensor to GPU tensor host buffer, then transfer to device
-            memcpy(input.h_data, cpu_batch.raw_data(), batch_size * 3 * 32 * 32 * sizeof(float));
+            memcpy(input.h_data, batch_data, batch_size * 3 * 32 * 32 * sizeof(float));
             input.copyToDevice();
             
             // Forward-Backward-Update in one call
@@ -226,7 +218,7 @@ void train_autoencoder_gpu_naive(
             batches_processed++;
             
             // Display progress
-            if ((batch_idx + 1) % 5 == 0 || batch_idx == num_batches - 1) {
+            if ((batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1) {
                 float avg_loss = epoch_loss / batches_processed;
                 std::cout << "\r  Epoch [" << std::setw(3) << (epoch + 1) << "/" << epochs << "] "
                           << "Batch [" << std::setw(4) << (batch_idx + 1) << "/" << num_batches << "] "
@@ -258,7 +250,7 @@ void train_autoencoder_gpu_naive(
 int main(int argc, char** argv) {
     try {
         // Configuration
-        const std::string data_root = "data/cifar-10-batches-bin";
+        const std::string data_dir = "data";
         const std::string save_dir = "models/saved_weights_gpu_naive";
         const int batch_size = BATCH_SIZE;
         const int epochs = EPOCHS;
@@ -284,15 +276,13 @@ int main(int argc, char** argv) {
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
         std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
         
-        // Load dataset
-        std::cout << "Loading CIFAR-10 dataset..." << std::endl;
-        CIFAR10Dataset train_dataset(data_root, CIFAR10Dataset::Mode::TRAIN);
-        train_dataset.load_data();
-        std::cout << "Loaded " << train_dataset.size() << " training images\n" << std::endl;
+        // Load dataset using simple loader
+        CIFAR10Loader loader(data_dir);
+        loader.load_train_data();
         
         // Train model
         train_autoencoder_gpu_naive(
-            train_dataset,
+            loader,
             batch_size,
             epochs,
             learning_rate,

@@ -1,241 +1,394 @@
-#include "data/cifar10_dataset.h"
-#include "data/data_utils.h"
-#include "utils/logger.h"
+/**
+ * Test file for CIFAR10Loader - Simple CIFAR-10 data loader
+ * Tests: loading, batching, shuffling, normalization
+ */
+
+#include "data/cifar10_loader.h"
 #include "config.h"
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#include <cstring>
 
 // Test helper function
 bool float_equal(float a, float b, float epsilon = 1e-5f) {
     return std::fabs(a - b) < epsilon;
 }
 
-// Test 1: Tensor creation and basic operations
-void test_tensor_basics() {
-    LOG_INFO("Testing Tensor basics...");
+// Test 1: Basic loader construction
+void test_loader_construction() {
+    std::cout << "[TEST] Testing CIFAR10Loader construction..." << std::endl;
     
-    // Create tensor [2, 3, 4, 4] (batch=2, channels=3, height=4, width=4)
-    std::vector<int> shape = {2, 3, 4, 4};
-    Tensor tensor(shape);
+    CIFAR10Loader loader(CIFAR_BIN_DIR);
     
-    // Check shape
-    assert(tensor.shape.size() == 4);
-    assert(tensor.batch() == 2);
-    assert(tensor.channels() == 3);
-    assert(tensor.height() == 4);
-    assert(tensor.width() == 4);
-    assert(tensor.size() == 96);
+    // Before loading, pointers should be null
+    assert(loader.train_images() == nullptr);
+    assert(loader.train_labels() == nullptr);
+    assert(loader.test_images() == nullptr);
+    assert(loader.test_labels() == nullptr);
     
-    // Test element access
-    tensor({0, 0, 0, 0}) = 1.5f;
-    tensor({1, 2, 3, 3}) = 2.5f;
-    
-    assert(float_equal(tensor({0, 0, 0, 0}), 1.5f));
-    assert(float_equal(tensor({1, 2, 3, 3}), 2.5f));
-    
-    LOG_INFO("Tensor basics test passed");
+    std::cout << "[PASS] Loader construction test passed" << std::endl;
 }
 
-// Test 2: Normalize tensor
-void test_normalize_tensor() {
-    LOG_INFO("Testing normalize_tensor...");
-    
-    std::vector<int> shape = {1, 1, 2, 2};
-    Tensor tensor(shape, false);
-    
-    // Fill with values [0, 255, 127.5, 63.75]
-    tensor({0, 0, 0, 0}) = 0.0f;
-    tensor({0, 0, 0, 1}) = 255.0f;
-    tensor({0, 0, 1, 0}) = 127.5f;
-    tensor({0, 0, 1, 1}) = 63.75f;
-    
-    DataUtils::normalize_tensor(tensor);
-    
-    // Check normalized values [0, 1, 0.5, 0.25]
-    assert(float_equal(tensor({0, 0, 0, 0}), 0.0f));
-    assert(float_equal(tensor({0, 0, 0, 1}), 1.0f));
-    assert(float_equal(tensor({0, 0, 1, 0}), 0.5f));
-    assert(float_equal(tensor({0, 0, 1, 1}), 0.25f));
-    
-    LOG_INFO("Normalize tensor test passed");
-}
-
-// Test 3: Standardize tensor
-void test_standardize_tensor() {
-    LOG_INFO("Testing standardize_tensor...");
-    
-    std::vector<int> shape = {1, 1, 2, 2};
-    Tensor tensor(shape, false);
-    
-    // Fill with values [1, 2, 3, 4] - mean=2.5, std=1.118
-    tensor({0, 0, 0, 0}) = 1.0f;
-    tensor({0, 0, 0, 1}) = 2.0f;
-    tensor({0, 0, 1, 0}) = 3.0f;
-    tensor({0, 0, 1, 1}) = 4.0f;
-    
-    DataUtils::standardize_tensor(tensor);
-    
-    // After standardization, mean should be ~0 and std should be ~1
-    float sum = 0.0f;
-    for (int i = 0; i < 2; ++i) {
-        for (int j = 0; j < 2; ++j) {
-            sum += tensor({0, 0, i, j});
-        }
-    }
-    float mean = sum / 4.0f;
-    
-    assert(float_equal(mean, 0.0f, 1e-4f));
-    LOG_INFO("Standardize tensor test passed");
-}
-
-// Test 4: Save and load tensor
-void test_save_load_tensor() {
-    LOG_INFO("Testing save/load tensor...");
-    
-    // Create a tensor with specific values
-    std::vector<int> shape = {2, 2, 3, 3};
-    Tensor original(shape, false);
-    
-    // Fill with sequential values
-    for (int i = 0; i < original.size(); ++i) {
-        original.data->data()[i] = static_cast<float>(i);
-    }
-    
-    // Save to file
-    std::string filepath = "test_tensor.bin";
-    DataUtils::save_tensor(original, filepath);
-    
-    // Load from file
-    Tensor loaded = DataUtils::load_tensor(filepath);
-    
-    // Verify shape
-    assert(loaded.shape.size() == original.shape.size());
-    for (size_t i = 0; i < original.shape.size(); ++i) {
-        assert(loaded.shape[i] == original.shape[i]);
-    }
-    
-    // Verify data
-    for (size_t i = 0; i < original.size(); ++i) {
-        assert(float_equal(loaded.data->data()[i], original.data->data()[i]));
-    }
-    
-    LOG_INFO("Save/load tensor test passed");
-}
-
-// Test 5: CIFAR10Dataset initialization
-void test_cifar10_dataset_init() {
-    LOG_INFO("Testing CIFAR10Dataset initialization...");
-    
-    // Create dataset (without loading data)
-    CIFAR10Dataset train_dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TRAIN);
-    CIFAR10Dataset test_dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TEST);
-    
-    // Check sizes
-    assert(train_dataset.size() == CIFAR_TRAIN_IMAGES);
-    assert(test_dataset.size() == CIFAR_TEST_IMAGES);
-    
-    // Check image properties
-    assert(train_dataset.get_image_size() == CIFAR_IMAGE_SIZE);
-    assert(train_dataset.get_num_channels() == CIFAR_CHANNELS);
-    
-    LOG_INFO("CIFAR10Dataset initialization test passed");
-}
-
-// Test 6: CIFAR10Dataset shuffle
-void test_cifar10_dataset_shuffle() {
-    LOG_INFO("Testing CIFAR10Dataset shuffle...");
-    
-    CIFAR10Dataset dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TEST);
-    
-    // Shuffle multiple times
-    dataset.shuffle();
-    dataset.shuffle();
-    
-    // Reset
-    dataset.reset();
-    
-    LOG_INFO("CIFAR10Dataset shuffle test passed");
-}
-
-// Test 7: CIFAR10Dataset load and batch (requires actual data files)
-void test_cifar10_dataset_load() {
-    LOG_INFO("Testing CIFAR10Dataset load and batch...");
+// Test 2: Load training data
+void test_load_train_data() {
+    std::cout << "[TEST] Testing load_train_data()..." << std::endl;
     
     try {
-        CIFAR10Dataset dataset(CIFAR_BIN_DIR, CIFAR10Dataset::Mode::TEST);
-        dataset.load_data();
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
         
-        // Get a batch
-        int batch_size = 16;
-        Tensor batch = dataset.get_batch(batch_size);
-        std::vector<int> labels = dataset.get_batch_labels(batch_size);
-        
-        // Check batch shape
-        assert(batch.batch() == batch_size);
-        assert(batch.channels() == CIFAR_CHANNELS);
-        assert(batch.height() == CIFAR_IMAGE_SIZE);
-        assert(batch.width() == CIFAR_IMAGE_SIZE);
-        
-        // Check labels
-        assert(labels.size() == batch_size);
-        for (int label : labels) {
-            assert(label >= 0 && label < CIFAR_CLASSES);
+        if (!success) {
+            std::cout << "[SKIP] Could not load training data (files may not exist)" << std::endl;
+            return;
         }
         
-        // Check pixel values are normalized [0, 1]
-        float* data = batch.data->data();
-        for (int i = 0; i < 100; ++i) {  // Sample first 100 pixels
-            assert(data[i] >= 0.0f && data[i] <= 1.0f);
-        }
+        // Check that data is loaded
+        assert(loader.train_images() != nullptr);
+        assert(loader.train_labels() != nullptr);
+        assert(loader.train_size() == 50000);
         
-        LOG_INFO("CIFAR10Dataset load and batch test passed");
+        std::cout << "[PASS] load_train_data test passed" << std::endl;
         
     } catch (const std::exception& e) {
-        LOG_WARNING("Could not load CIFAR-10 data: %s", e.what());
-        LOG_WARNING("Skipping data loading test (data files may not be available)");
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
     }
 }
 
-// Test 9: Edge cases
-void test_edge_cases() {
-    LOG_INFO("Testing edge cases...");
+// Test 3: Load test data
+void test_load_test_data() {
+    std::cout << "[TEST] Testing load_test_data()..." << std::endl;
     
-    // Small tensor
-    Tensor small({1, 1, 1, 1});
-    assert(small.size() == 1);
-    small({0, 0, 0, 0}) = 42.0f;
-    assert(float_equal(small({0, 0, 0, 0}), 42.0f));
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_test_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load test data (files may not exist)" << std::endl;
+            return;
+        }
+        
+        // Check that data is loaded
+        assert(loader.test_images() != nullptr);
+        assert(loader.test_labels() != nullptr);
+        assert(loader.test_size() == 10000);
+        
+        std::cout << "[PASS] load_test_data test passed" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 4: Normalization check (values should be in [0, 1])
+void test_normalization() {
+    std::cout << "[TEST] Testing normalization [0, 1]..." << std::endl;
     
-    // Large tensor
-    Tensor large({10, 3, 64, 64});
-    assert(large.size() == 10 * 3 * 64 * 64);
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const float* images = loader.train_images();
+        int total_pixels = 50000 * 3 * 32 * 32;  // NCHW format
+        
+        // Sample check: verify first 10000 values are in [0, 1]
+        int check_count = std::min(10000, total_pixels);
+        for (int i = 0; i < check_count; ++i) {
+            assert(images[i] >= 0.0f && images[i] <= 1.0f);
+        }
+        
+        // Also check some random positions
+        for (int i = 0; i < 1000; ++i) {
+            int idx = (i * 12345) % total_pixels;
+            assert(images[idx] >= 0.0f && images[idx] <= 1.0f);
+        }
+        
+        std::cout << "[PASS] Normalization test passed (all values in [0, 1])" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 5: Labels check (values should be in [0, 9])
+void test_labels() {
+    std::cout << "[TEST] Testing labels [0, 9]..." << std::endl;
     
-    LOG_INFO("Edge cases test passed");
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const int* labels = loader.train_labels();
+        
+        // Check all labels are in valid range
+        for (int i = 0; i < 50000; ++i) {
+            assert(labels[i] >= 0 && labels[i] <= 9);
+        }
+        
+        std::cout << "[PASS] Labels test passed (all values in [0, 9])" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 6: Batch generation
+void test_batch_generation() {
+    std::cout << "[TEST] Testing batch generation..." << std::endl;
+    
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const int batch_size = 32;
+        const int image_size = 3 * 32 * 32;  // 3072 floats per image
+        
+        // Get first batch
+        loader.reset();
+        assert(loader.has_more_batches(batch_size));
+        
+        float* batch1 = loader.get_batch(batch_size);
+        assert(batch1 != nullptr);
+        
+        // Get batch labels
+        int* labels1 = loader.get_batch_labels(batch_size);
+        assert(labels1 != nullptr);
+        
+        // Verify batch data is valid
+        for (int i = 0; i < batch_size * image_size; ++i) {
+            assert(batch1[i] >= 0.0f && batch1[i] <= 1.0f);
+        }
+        
+        // Verify batch labels are valid
+        for (int i = 0; i < batch_size; ++i) {
+            assert(labels1[i] >= 0 && labels1[i] <= 9);
+        }
+        
+        std::cout << "[PASS] Batch generation test passed" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 7: Multiple batches and reset
+void test_multiple_batches() {
+    std::cout << "[TEST] Testing multiple batches and reset..." << std::endl;
+    
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const int batch_size = 100;
+        int batch_count = 0;
+        
+        loader.reset();
+        while (loader.has_more_batches(batch_size)) {
+            float* batch = loader.get_batch(batch_size);
+            assert(batch != nullptr);
+            batch_count++;
+            
+            // Safety check to avoid infinite loop
+            if (batch_count > 600) break;
+        }
+        
+        // Should have 500 full batches (50000 / 100)
+        assert(batch_count == 500);
+        
+        // After exhausting, reset and try again
+        loader.reset();
+        assert(loader.has_more_batches(batch_size));
+        
+        float* batch = loader.get_batch(batch_size);
+        assert(batch != nullptr);
+        
+        std::cout << "[PASS] Multiple batches test passed (500 batches)" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 8: Shuffle functionality
+void test_shuffle() {
+    std::cout << "[TEST] Testing shuffle..." << std::endl;
+    
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const int batch_size = 32;
+        
+        // Get first batch before shuffle
+        loader.reset();
+        float* batch_before = loader.get_batch(batch_size);
+        
+        // Copy first few values
+        float first_values_before[100];
+        std::memcpy(first_values_before, batch_before, 100 * sizeof(float));
+        
+        // Shuffle and get first batch again
+        loader.shuffle();
+        loader.reset();
+        float* batch_after = loader.get_batch(batch_size);
+        
+        // Compare - should be different (with very high probability)
+        int diff_count = 0;
+        for (int i = 0; i < 100; ++i) {
+            if (!float_equal(first_values_before[i], batch_after[i])) {
+                diff_count++;
+            }
+        }
+        
+        // At least some values should be different after shuffle
+        assert(diff_count > 0);
+        
+        std::cout << "[PASS] Shuffle test passed (" << diff_count << "/100 values different)" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 9: Memory layout (NCHW format)
+void test_memory_layout() {
+    std::cout << "[TEST] Testing NCHW memory layout..." << std::endl;
+    
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const float* images = loader.train_images();
+        
+        // In NCHW format:
+        // - Each image is 3 * 32 * 32 = 3072 floats
+        // - First 1024 floats = Red channel
+        // - Next 1024 floats = Green channel  
+        // - Last 1024 floats = Blue channel
+        
+        const int image_size = 3072;
+        const int channel_size = 1024;
+        
+        // For image 0, check that each channel region is valid
+        for (int c = 0; c < 3; ++c) {
+            for (int pixel = 0; pixel < channel_size; ++pixel) {
+                int idx = c * channel_size + pixel;
+                assert(images[idx] >= 0.0f && images[idx] <= 1.0f);
+            }
+        }
+        
+        // Image 1 should start at offset 3072
+        assert(images[image_size] >= 0.0f && images[image_size] <= 1.0f);
+        
+        std::cout << "[PASS] NCHW memory layout test passed" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
+}
+
+// Test 10: Data statistics
+void test_data_statistics() {
+    std::cout << "[TEST] Computing data statistics..." << std::endl;
+    
+    try {
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
+        bool success = loader.load_train_data();
+        
+        if (!success) {
+            std::cout << "[SKIP] Could not load data" << std::endl;
+            return;
+        }
+        
+        const float* images = loader.train_images();
+        const int total_pixels = 50000 * 3 * 32 * 32;
+        
+        // Compute mean and check range
+        double sum = 0.0;
+        float min_val = 1.0f, max_val = 0.0f;
+        
+        for (int i = 0; i < total_pixels; ++i) {
+            sum += images[i];
+            if (images[i] < min_val) min_val = images[i];
+            if (images[i] > max_val) max_val = images[i];
+        }
+        
+        double mean = sum / total_pixels;
+        
+        std::cout << "  - Total pixels: " << total_pixels << std::endl;
+        std::cout << "  - Min value: " << min_val << std::endl;
+        std::cout << "  - Max value: " << max_val << std::endl;
+        std::cout << "  - Mean value: " << mean << std::endl;
+        
+        // CIFAR-10 normalized mean should be around 0.4-0.5
+        assert(mean > 0.3 && mean < 0.6);
+        assert(min_val >= 0.0f);
+        assert(max_val <= 1.0f);
+        
+        std::cout << "[PASS] Data statistics test passed" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cout << "[SKIP] Exception: " << e.what() << std::endl;
+    }
 }
 
 int main() {
-    LOG_INIT();
-    LOG_SET_LEVEL(LogLevel::INFO);
-    
-    LOG_INFO("=== Starting Data Functions Tests ===\n");
+    std::cout << "========================================" << std::endl;
+    std::cout << "  CIFAR10Loader Test Suite" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "Data directory: " << CIFAR_BIN_DIR << std::endl;
+    std::cout << std::endl;
     
     try {
-        // Run all tests
-        test_tensor_basics();
-        test_normalize_tensor();
-        test_standardize_tensor();
-        test_save_load_tensor();
-        test_cifar10_dataset_init();
-        test_cifar10_dataset_shuffle();
-        test_cifar10_dataset_load();
-        test_edge_cases();
+        test_loader_construction();
+        test_load_train_data();
+        test_load_test_data();
+        test_normalization();
+        test_labels();
+        test_batch_generation();
+        test_multiple_batches();
+        test_shuffle();
+        test_memory_layout();
+        test_data_statistics();
         
-        LOG_INFO("\n=== All Tests Passed! ===");
+        std::cout << std::endl;
+        std::cout << "========================================" << std::endl;
+        std::cout << "  All Tests Completed!" << std::endl;
+        std::cout << "========================================" << std::endl;
         return 0;
         
     } catch (const std::exception& e) {
-        LOG_ERROR("Test failed with exception: %s", e.what());
+        std::cerr << "[FATAL] Test failed with exception: " << e.what() << std::endl;
         return 1;
     }
 }
