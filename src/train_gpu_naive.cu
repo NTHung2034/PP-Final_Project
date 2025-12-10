@@ -1,6 +1,7 @@
 #include "models/autoencoder_gpu_naive.cuh"
 #include "data/cifar10_dataset.h"
 #include "utils/logger.h"
+#include "config.h"
 
 #include <iostream>
 #include <iomanip>
@@ -259,9 +260,9 @@ int main(int argc, char** argv) {
         // Configuration
         const std::string data_root = "data/cifar-10-batches-bin";
         const std::string save_dir = "models/saved_weights_gpu_naive";
-        const int batch_size = 32;
-        const int epochs = 20;
-        const float learning_rate = 0.001f;
+        const int batch_size = BATCH_SIZE;
+        const int epochs = EPOCHS;
+        const float learning_rate = LEARNING_RATE;
         
         std::cout << "\n";
         std::cout << "╔════════════════════════════════════════════════════════════════╗\n";
