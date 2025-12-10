@@ -39,7 +39,7 @@ endif()
 
 # Project Directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/external/libsvm)
+# include_directories(${CMAKE_SOURCE_DIR}/external/libsvm)  # Commented out - LIBSVM not used
 
 # Define project root path for use in code
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
@@ -54,14 +54,14 @@ set(UTILS_SOURCES
     src/utils/logger.cpp
     src/utils/image_utils.cpp
     src/utils/memory_tracker.cpp
-    src/utils/svm_classifier.cpp
+    # src/utils/svm_classifier.cpp  # Commented out - requires LIBSVM
     # src/utils/memory_pool.cpp  
 )
 
-# LIBSVM library
-set(LIBSVM_DIR ${CMAKE_SOURCE_DIR}/external/libsvm)
-add_library(svm STATIC ${LIBSVM_DIR}/svm.cpp)
-target_include_directories(svm PUBLIC ${LIBSVM_DIR})
+# LIBSVM library (commented out - not needed for core functionality)
+# set(LIBSVM_DIR ${CMAKE_SOURCE_DIR}/src/utils)
+# add_library(svm STATIC ${LIBSVM_DIR}/svm_classifier.cpp)
+# target_include_directories(svm PUBLIC ${LIBSVM_DIR})
 
 set(LAYER_SOURCES
     src/layers/conv2d_cpu.cpp
@@ -103,30 +103,31 @@ add_executable(test_autoencoder_cpu
     ${MODEL_SOURCES}
 )
 
-add_executable(train_cpu 
-    src/train_cpu.cpp
-    ${DATA_SOURCES}
-    ${UTILS_SOURCES}
-    ${LAYER_SOURCES}
-    ${MODEL_SOURCES}
-)
+# train_cpu commented out - uncomment when needed
+# add_executable(train_cpu 
+#     src/train_cpu.cpp
+#     ${DATA_SOURCES}
+#     ${UTILS_SOURCES}
+#     ${LAYER_SOURCES}
+#     ${MODEL_SOURCES}
+# )
 
 #####################################################################
 
 # Link OpenMP
-target_link_libraries(train_cpu OpenMP::OpenMP_CXX svm)
-target_link_libraries(test_layers_cpu OpenMP::OpenMP_CXX svm)
-target_link_libraries(test_autoencoder_cpu OpenMP::OpenMP_CXX svm)
-target_link_libraries(test_dataloader svm)
+# target_link_libraries(train_cpu OpenMP::OpenMP_CXX svm)  # train_cpu commented out
+target_link_libraries(test_layers_cpu OpenMP::OpenMP_CXX)
+target_link_libraries(test_autoencoder_cpu OpenMP::OpenMP_CXX)
+# target_link_libraries(test_dataloader svm)  # SVM not needed for dataloader
 
 
 # CPU Compile Options
 if(MSVC)
-    target_compile_options(train_cpu PRIVATE /W4 /O2 /openmp)
+    # target_compile_options(train_cpu PRIVATE /W4 /O2 /openmp)  # train_cpu commented out
     target_compile_options(test_layers_cpu PRIVATE /W4 /O2 /openmp)
     target_compile_options(test_autoencoder_cpu PRIVATE /W4 /O2 /openmp)
 else()
-    target_compile_options(train_cpu PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
+    # target_compile_options(train_cpu PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)  # train_cpu commented out
     target_compile_options(test_layers_cpu PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
     target_compile_options(test_autoencoder_cpu PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
 endif()
@@ -383,8 +384,8 @@ if(CUDA_AVAILABLE)
     message(STATUS "  - test_layers_gpu_naive (naive)")
     message(STATUS "  - test_autoencoder_gpu_naive (naive)")
      
-    target_link_libraries(train_cpu CUDA::cudart)
-    target_compile_definitions(train_cpu PRIVATE USE_CUDA)
+    # target_link_libraries(train_cpu CUDA::cudart)  # train_cpu commented out
+    # target_compile_definitions(train_cpu PRIVATE USE_CUDA)  # train_cpu commented out
 endif()
 
 

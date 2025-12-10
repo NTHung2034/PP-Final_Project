@@ -15,14 +15,13 @@ __global__ void relu_forward_kernel_naive(
 }
 
 void relu_forward_gpu_naive(
-    GPUTensor& tensor,
-    cudaStream_t stream)
+    GPUTensor& tensor)
 {
     int size = tensor.size;
     int threads = 256;
     int blocks = (size + threads - 1) / threads;
     
-    relu_forward_kernel_naive<<<blocks, threads, 0, stream>>>(tensor.d_data, size);
+    relu_forward_kernel_naive<<<blocks, threads>>>(tensor.d_data, size);
     
     CUDA_CHECK(cudaGetLastError());
 }

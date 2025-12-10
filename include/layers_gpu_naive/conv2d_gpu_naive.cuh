@@ -13,10 +13,8 @@ void conv2d_forward_gpu_naive(
     const GPUTensor& input,
     const GPUConvWeights& weights,
     GPUTensor& output,
-    int kernel_h,
-    int kernel_w,
-    int stride,
-    int padding,
+    int kernel_h, int kernel_w,
+    int stride, int padding,
     bool apply_relu = false);
 
 /**

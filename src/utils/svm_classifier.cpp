@@ -1,6 +1,6 @@
 #include "utils/svm_classifier.h"
 #include "utils/logger.h"
-#include "../../external/libsvm/svm.h"
+#include "utils/svm_classifier.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>

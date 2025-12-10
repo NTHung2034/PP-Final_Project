@@ -57,8 +57,7 @@ void conv2d_forward_gpu_naive(
     GPUTensor& output,
     int kernel_h, int kernel_w,
     int stride, int padding,
-    bool apply_relu,
-    cudaStream_t stream)
+    bool apply_relu)
 {
     int N = input.batch;
     int C_in = input.channels;
@@ -74,7 +73,7 @@ void conv2d_forward_gpu_naive(
     dim3 grid(N, C_out, blocks_z);
     dim3 block(threads);
     
-    conv2d_forward_kernel_naive<<<grid, block, 0, stream>>>(
+    conv2d_forward_kernel_naive<<<grid, block>>>(
         input.d_data, weights.d_weights, weights.d_bias, output.d_data,
         N, C_in, H_in, W_in, C_out, H_out, W_out,
         kernel_h, kernel_w, stride, padding, apply_relu

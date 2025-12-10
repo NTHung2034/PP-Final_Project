@@ -37,8 +37,7 @@ __global__ void mse_loss_forward_kernel_naive(
 
 float mse_loss_forward_gpu_naive(
     const GPUTensor& prediction,
-    const GPUTensor& target,
-    cudaStream_t stream)
+    const GPUTensor& target)
 {
     int size = prediction.size;
     int threads = 256;
@@ -47,11 +46,11 @@ float mse_loss_forward_gpu_naive(
     float* d_partial_loss;
     CUDA_CHECK(cudaMalloc(&d_partial_loss, blocks * sizeof(float)));
     
-    mse_loss_forward_kernel_naive<<<blocks, threads, 0, stream>>>(prediction.d_data, target.d_data, d_partial_loss, size);
+    mse_loss_forward_kernel_naive<<<blocks, threads>>>(prediction.d_data, target.d_data, d_partial_loss, size);
     
     float* h_partial_loss = new float[blocks];
-    CUDA_CHECK(cudaMemcpyAsync(h_partial_loss, d_partial_loss, blocks * sizeof(float), cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
+    CUDA_CHECK(cudaMemcpy(h_partial_loss, d_partial_loss, blocks * sizeof(float), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaDeviceSynchronize());
     
     float total_loss = 0.0f;
     for (int i = 0; i < blocks; i++) {

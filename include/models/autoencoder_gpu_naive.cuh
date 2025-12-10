@@ -15,8 +15,7 @@ void sgd_update_gpu_naive(
     float* d_weights,
     const float* d_gradients,
     float learning_rate,
-    int size,
-    cudaStream_t stream = 0);
+    int size);
 
 // GPU Autoencoder Class
 class GPUAutoencoderNaive {

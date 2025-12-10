@@ -162,7 +162,7 @@ void train_autoencoder_gpu_naive(
     std::cout << "  Batch size: " << batch_size << std::endl;
     std::cout << "  Epochs: " << epochs << std::endl;
     std::cout << "  Learning rate: " << learning_rate << std::endl;
-    std::cout << "  Training samples: " << dataset.num_images() << std::endl;
+    std::cout << "  Training samples: " << dataset.size() << std::endl;
     std::cout << "  Save directory: " << save_dir << std::endl;
     std::cout << std::string(70, '=') << "\n" << std::endl;
     
@@ -186,7 +186,7 @@ void train_autoencoder_gpu_naive(
     TrainingStats stats;
     CUDATimer gpu_timer;
     
-    int num_batches = (dataset.num_images() + batch_size - 1) / batch_size;
+    int num_batches = (dataset.size() + batch_size - 1) / batch_size;
     std::cout << "Batches per epoch: " << num_batches << "\n" << std::endl;
     
     // Main training loop
@@ -211,7 +211,10 @@ void train_autoencoder_gpu_naive(
             
             // Create GPU tensor for input (and target, which is same as input for autoencoder)
             GPUTensor input(batch_size, 3, 32, 32, false);
-            input.copyFromHost(cpu_batch.raw_data());
+            
+            // Copy from CPU tensor to GPU tensor host buffer, then transfer to device
+            memcpy(input.h_data, cpu_batch.raw_data(), batch_size * 3 * 32 * 32 * sizeof(float));
+            input.copyToDevice();
             
             // Forward-Backward-Update in one call
             float batch_loss = model.forward_backward_update(
@@ -284,7 +287,7 @@ int main(int argc, char** argv) {
         std::cout << "Loading CIFAR-10 dataset..." << std::endl;
         CIFAR10Dataset train_dataset(data_root, CIFAR10Dataset::Mode::TRAIN);
         train_dataset.load_data();
-        std::cout << "Loaded " << train_dataset.num_images() << " training images\n" << std::endl;
+        std::cout << "Loaded " << train_dataset.size() << " training images\n" << std::endl;
         
         // Train model
         train_autoencoder_gpu_naive(

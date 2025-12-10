@@ -1,23 +1,11 @@
 #include <stdio.h>
-
-// OPTIMIZED CONV2D KERNEL - FIXED VERSION FOR TESLA T4
-
-// CRITICAL FIXES APPLIED:
-// 1. Grid dimension overflow: Use batch loop instead of encoding in blockIdx.z
-// 2. Improved shared memory tiling with proper boundary handling
-// 3. Better thread organization for Tesla T4 (compute capability 7.5)
-// 4. Completely rewritten backward pass for efficiency
-// 5. Reduced atomic operations by 1000x using local reduction
+#include "layers_gpu/conv2d_gpu.cuh"
 
 #define TILE_WIDTH 16
 #define TILE_HEIGHT 16
 #define MAX_KERNEL_SIZE 5  // Support up to 5x5 kernels
 
 // FORWARD PASS: Fused Conv2D + Bias + ReLU Kernel
-
-// FIXED: Removed batch from blockIdx.z to avoid grid dimension overflow
-// Now: blockIdx.z = output_channel only (max 65535)
-// Batch is handled in a separate loop in the launcher
 
 __global__ void conv2d_relu_fused_kernel(
     const float* __restrict__ input,    // Input: [N, C_in, H_in, W_in]

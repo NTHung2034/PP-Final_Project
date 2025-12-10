@@ -45,5 +45,4 @@ void maxpool2d_backward_gpu(
     const int* d_max_indices,
     GPUTensor& grad_input,
     cudaStream_t stream = 0);
-
-#endif // MAXPOOL_GPU_CUH
+ 
