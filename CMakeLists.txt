@@ -55,6 +55,9 @@ set(DATA_SOURCES
     src/data/cifar10_loader.cpp
 )
 
+set(SVM_SOURCES
+    external/svm.cu
+)
 
 set(CPU_LAYER_SOURCES
     src/layers/conv2d_cpu.cpp
