@@ -9,6 +9,13 @@
 #include <string>
 #include <cstring>
 
+// Simple VRAM usage query
+size_t get_vram_used_mb() {
+    size_t free, total;
+    cudaMemGetInfo(&free, &total);
+    return (total - free) / (1024 * 1024);
+}
+
 // CUDA event-based timer for accurate GPU timing
 class CUDATimer {
 private:
@@ -186,7 +193,8 @@ void train_autoencoder_gpu_naive(
     CUDATimer gpu_timer;
     
     int num_batches = loader.train_size() / batch_size;
-    std::cout << "Batches per epoch: " << num_batches << "\n" << std::endl;
+    std::cout << "Batches per epoch: " << num_batches << std::endl;
+    std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n" << std::endl;
     
     // Main training loop
     for (int epoch = 0; epoch < epochs; epoch++) {
@@ -236,6 +244,7 @@ void train_autoencoder_gpu_naive(
     
     std::cout << std::endl;
     stats.print_final_summary();
+    std::cout << "Final VRAM usage: " << get_vram_used_mb() << " MB\n" << std::endl;
     
     // Save weights and training summary
     save_model_weights(model, save_dir);
