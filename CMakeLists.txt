@@ -158,6 +158,60 @@ if(CUDA_AVAILABLE)
     target_link_libraries(test_autoencoder_gpu_naive CUDA::cudart)
 
     message(STATUS "GPU Naive targets: train_gpu_naive, test_layers_gpu_naive, test_autoencoder_gpu_naive")
+
+    # -------------------------------------------------------------------------
+    # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
+    # -------------------------------------------------------------------------
+    set(GPU_LAYER_SOURCES_OPT_V1
+        src/layers_gpu_opt_v1/conv2d_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/relu_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/maxpool_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/upsample_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/mse_loss_gpu_opt_v1.cu
+    )
+
+    set(GPU_MODEL_SOURCES_OPT_V1
+        src/models/autoencoder_gpu_opt_v1.cu
+    )
+
+    add_executable(train_gpu_opt_v1
+        src/train_gpu_opt_v1.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    set_target_properties(train_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_gpu_opt_v1 CUDA::cudart)
+    target_compile_definitions(train_gpu_opt_v1 PRIVATE USE_CUDA)
+
+    # GPU Optimized v1 Tests
+    add_executable(test_layers_gpu_opt_v1
+        tests/tests_gpu_opt_v1/test_layers_gpu_opt_v1.cu
+        ${GPU_LAYER_SOURCES_OPT_V1}
+    )
+    
+    add_executable(test_autoencoder_gpu_opt_v1
+        tests/tests_gpu_opt_v1/test_autoencoder_gpu_opt_v1.cu
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    
+    set_target_properties(test_layers_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    set_target_properties(test_autoencoder_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+
+    target_link_libraries(test_layers_gpu_opt_v1 CUDA::cudart)
+    target_link_libraries(test_autoencoder_gpu_opt_v1 CUDA::cudart)
+
+    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, test_layers_gpu_opt_v1, test_autoencoder_gpu_opt_v1")
 endif()
 
 # Create data and models directories
