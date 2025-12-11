@@ -68,33 +68,6 @@ void save_training_stats(const std::string& filepath,
     }
     out.close();
 }
-    std::ofstream out(filepath);
-    if (!out) return;
-    
-    float total_time = 0;
-    for (float t : times) total_time += t;
-    
-    out << "=== GPU OPTIMIZED v1 TRAINING SUMMARY ===\n\n";
-    out << "Optimizations: Memory Pool, Shared Memory Tiling, Constant Memory\n\n";
-    out << "Configuration:\n";
-    out << "  Batch size: " << batch_size << "\n";
-    out << "  Learning rate: " << lr << "\n";
-    out << "  Epochs: " << losses.size() << "\n\n";
-    out << "Results:\n";
-    out << "  Total time: " << std::fixed << std::setprecision(2) << total_time << "s\n";
-    out << "  Avg time/epoch: " << (total_time / losses.size()) << "s\n";
-    out << "  Initial loss: " << std::setprecision(6) << losses.front() << "\n";
-    out << "  Final loss: " << losses.back() << "\n";
-    out << "  Loss reduction: " << std::setprecision(2) << ((1.0f - losses.back() / losses.front()) * 100) << "%\n\n";
-    out << "Epoch\tLoss\t\tTime(s)\t\timg/s\n";
-    out << "-----\t--------\t-------\t\t-----\n";
-    for (size_t i = 0; i < losses.size(); i++) {
-        out << (i + 1) << "\t" << std::setprecision(6) << losses[i] << "\t"
-            << std::setprecision(2) << times[i] << "\t\t"
-            << (int)(50000 / times[i]) << "\n";
-    }
-    out.close();
-}
 
 int main() {
     std::cout << "\n";
@@ -138,28 +111,6 @@ int main() {
     CUDATimer timer;
 
     for (int epoch = 0; epoch < epochs; epoch++) {
-        timer.start();
-        
-        loader.shuffle();
-        loader.reset();
-        
-        float epoch_loss = 0.0f;
-        for (int b = 0; b < num_batches; b++) {
-            float* batch = loader.get_batch(batch_size);
-            epoch_loss += model.train_step(batch, batch_size, lr);
-        }
-        epoch_loss /= num_batches;
-        
-        float sec = timer.stop();
-        
-        epoch_losses.push_back(epoch_loss);
-        epoch_times.push_back(sec);
-        
-        std::cout << std::setw(5) << (epoch + 1) << " | " 
-                  << std::fixed << std::setprecision(6) << epoch_loss << " | "
-                  << std::setprecision(1) << std::setw(5) << sec << "s | "
-                  << std::setw(6) << (int)(loader.train_size() / sec) << "\n";
-    }
         timer.start();
         
         loader.shuffle();
