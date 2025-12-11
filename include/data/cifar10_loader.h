@@ -21,7 +21,7 @@ private:
     void load_batch_file(const std::string& filepath, float* images, int* labels, int start_idx);
 
     // Data directory
-    std::string data_dir_;
+    std::string data_dir_ = CIFAR_BIN_DIR;
 
     // Raw data storage (contiguous arrays)
     float* train_images_ = nullptr;   // [CIFAR_TRAIN_IMAGES * CIFAR_PIXELS] floats

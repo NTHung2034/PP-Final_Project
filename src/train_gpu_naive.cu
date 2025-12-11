@@ -249,9 +249,8 @@ void train_autoencoder_gpu_naive(
 
 int main(int argc, char** argv) {
     try {
-        // Configuration
-        const std::string data_dir = "data";
-        const std::string save_dir = "models/saved_weights_gpu_naive";
+        // Configuration - use constants from config.h
+        const std::string save_dir = MODEL_SAVE_DIR_GPU_NAIVE;
         const int batch_size = BATCH_SIZE;
         const int epochs = EPOCHS;
         const float learning_rate = LEARNING_RATE;
@@ -276,8 +275,8 @@ int main(int argc, char** argv) {
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
         std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
         
-        // Load dataset using simple loader
-        CIFAR10Loader loader(data_dir);
+        // Load dataset using CIFAR_BIN_DIR from config.h
+        CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
         
         // Train model

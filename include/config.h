@@ -5,6 +5,8 @@
 #define TRAIN_BATCH_FILES       { "data_batch_1.bin", "data_batch_2.bin", "data_batch_3.bin", "data_batch_4.bin", "data_batch_5.bin" }
 #define TEST_BATCH_FILE         "test_batch.bin"
 #define MODEL_SAVE_DIR          PROJECT_ROOT_DIR "/models/saved_weights"
+#define MODEL_SAVE_DIR_GPU_NAIVE      PROJECT_ROOT_DIR "/models/saved_weights_gpu_naive"
+#define MODEL_SAVE_DIR_GPU_OPTIMIZED  PROJECT_ROOT_DIR "/models/saved_weights_gpu_optimized"
 
 // Dataset Constants
 constexpr int CIFAR_IMAGE_SIZE = 32;
