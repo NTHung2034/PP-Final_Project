@@ -14,14 +14,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # =============================================================================
 # Build Options
 # =============================================================================
-option(ENABLE_CUDA "Enable CUDA support (requires NVIDIA GPU)" OFF)
+option(ENABLE_CUDA "Enable CUDA support (requires NVIDIA GPU)" ON)
 
 # =============================================================================
 # Find Required Packages
 # =============================================================================
-find_package(OpenMP REQUIRED)
+# find_package(OpenMP REQUIRED)
 
-# CUDA Support (Optional)
+# CUDA Support
 if(ENABLE_CUDA)
     find_package(CUDAToolkit)
     if(CUDAToolkit_FOUND)
@@ -39,113 +39,77 @@ endif()
 
 # Project Directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Define project root path for use in code
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 ######################################### set source files #########################################
+# set(UTILS_SOURCES
+#     src/utils/logger.cpp
+#     src/utils/image_utils.cpp
+#     src/utils/memory_tracker.cpp
+# )
+
 set(DATA_SOURCES
-    src/data/cifar10_dataset.cpp
-    src/data/data_utils.cpp
+    src/data/cifar10_loader.cpp
 )
 
-set(UTILS_SOURCES
-    src/utils/logger.cpp
-    src/utils/image_utils.cpp
-    src/utils/memory_tracker.cpp
-    # src/utils/memory_pool.cpp  
+set(SVM_SOURCES
+    external/svm.cu
 )
 
-
-set(LAYER_SOURCES
+set(CPU_LAYER_SOURCES
     src/layers/conv2d_cpu.cpp
     src/layers/relu_cpu.cpp
     src/layers/maxpool_cpu.cpp
     src/layers/upsample_cpu.cpp
 )
 
-set(MODEL_SOURCES
+set(CPU_MODEL_SOURCES
     src/models/autoencoder_cpu.cpp
 )
 
-set(MAIN_SOURCES
-    src/main_train.cpp
-)
-
-# add_executable(test_dataloader
-#     tests/test_dataloader.cpp
-#     ${DATA_SOURCES}
-#     ${UTILS_SOURCES}
-# )
-
-# add_executable(test_layers
-#     tests/test_layers.cpp
-#     ${DATA_SOURCES}
-#     ${UTILS_SOURCES}
-#     ${LAYER_SOURCES}
-# )
-
-# add_executable(test_autoencoder
-#     tests/test_autoencoder.cpp
-#     ${DATA_SOURCES}
-#     ${UTILS_SOURCES}
-#     ${LAYER_SOURCES}
-#     ${MODEL_SOURCES}
-# )
-
-add_executable(train_cpu 
-    src/train_cpu.cpp
+######################################### Set up executables #########################################
+# =============================================================================
+# Test Dataloader Only
+# =============================================================================
+add_executable(test_dataloader
+    tests/test_dataloader.cpp
     ${DATA_SOURCES}
-    ${UTILS_SOURCES}
-    ${LAYER_SOURCES}
-    ${MODEL_SOURCES}
 )
 
-#####################################################################
+# =============================================================================
+# CPU Tests 
+# =============================================================================
+add_executable(test_layers_cpu
+    tests/tests_cpu/test_layers.cpp
+    ${CPU_LAYER_SOURCES}
+)
 
-# Link OpenMP and LIBSVM
-target_link_libraries(train_cpu OpenMP::OpenMP_CXX)
-# target_link_libraries(test_layers OpenMP::OpenMP_CXX svm)
-# target_link_libraries(test_autoencoder OpenMP::OpenMP_CXX svm)
+add_executable(test_autoencoder_cpu
+    tests/tests_cpu/test_autoencoder.cpp
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
 
-# TODO: see if this needed on Colab
-# # Link psapi for Windows memory tracking
-# if(WIN32)
-#     target_link_libraries(train_cpu psapi)
-#     target_link_libraries(test_layers psapi)
-#     target_link_libraries(test_autoencoder psapi)
-#     target_link_libraries(test_dataloader psapi)
-# endif()
+# =============================================================================
+# CPU Training
+# =============================================================================
+add_executable(train_cpu
+    src/train_cpu_v2.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
 
-# CPU Compile Options
-if(MSVC)
-    target_compile_options(train_cpu PRIVATE /W4 /O2 /openmp)
-    target_compile_options(test_layers PRIVATE /W4 /O2 /openmp)
-    target_compile_options(test_autoencoder PRIVATE /W4 /O2 /openmp)
-else()
-    target_compile_options(train_cpu PRIVATE -Wall -Wextra -O3 -march=native -fopenmp)
-endif()
-
-# Add CUDA support if available
+# =============================================================================
+# GPU Support - Naive Implementation
+# =============================================================================
 if(CUDA_AVAILABLE)
-    # =============================================================================
-    # GPU Layer Sources - Optimized Version (Phase 3)
-    # =============================================================================
-    set(GPU_LAYER_SOURCES
-        src/layers_gpu/conv2d_gpu.cu
-        src/layers_gpu/maxpool_gpu.cu
-        src/layers_gpu/relu_gpu.cu
-        src/layers_gpu/upsample_gpu.cu
-        src/layers_gpu/mse_loss_gpu.cu
-    )
+    # CUDA architecture targets
+    set(CUDA_ARCH "89;75;70;61;50")
 
-    set(GPU_MODEL_SOURCES
-        src/models/autoencoder_gpu.cu
-    )
-
-    # =============================================================================
-    # GPU Layer Sources - Naive Version (Phase 2)
-    # =============================================================================
     set(GPU_LAYER_SOURCES_NAIVE
         src/layers_gpu_naive/conv2d_gpu_naive.cu
         src/layers_gpu_naive/maxpool_gpu_naive.cu
@@ -158,164 +122,103 @@ if(CUDA_AVAILABLE)
         src/models/autoencoder_gpu_naive.cu
     )
 
-    # =============================================================================
-    # GPU Training Executable - Optimized (Phase 3)
-    # =============================================================================
-    add_executable(train_gpu_optimized
-        src/train_gpu.cu
-        ${DATA_SOURCES}
-        ${UTILS_SOURCES}
-        ${GPU_LAYER_SOURCES}
-        ${GPU_MODEL_SOURCES}
-    )
-
-    # =============================================================================
-    # GPU Training Executable - Naive (Phase 2)
-    # =============================================================================
+    # GPU Naive Training
     add_executable(train_gpu_naive
         src/train_gpu_naive.cu
         ${DATA_SOURCES}
-        ${UTILS_SOURCES}
         ${GPU_LAYER_SOURCES_NAIVE}
         ${GPU_MODEL_SOURCES_NAIVE}
     )
-
-    # =============================================================================
-    # Configure Optimized GPU Training Executable
-    # =============================================================================
-    set_target_properties(train_gpu_optimized PROPERTIES
-        CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "75;80;89"  
-    )
-
-    target_include_directories(train_gpu_optimized PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-    )
-
-    target_link_libraries(train_gpu_optimized 
-        CUDA::cudart
-        OpenMP::OpenMP_CXX
-    )
-
-    target_compile_definitions(train_gpu_optimized PRIVATE USE_CUDA)
-
-    if(MSVC)
-        target_compile_options(train_gpu_optimized PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2 /openmp>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
-        )
-    else()
-        target_compile_options(train_gpu_optimized PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -march=native -fopenmp>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3,-fopenmp>
-        )
-    endif()
-
-    # =============================================================================
-    # Configure Naive GPU Training Executable
-    # =============================================================================
     set_target_properties(train_gpu_naive PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "75;80;89"  
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-
-    target_include_directories(train_gpu_naive PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-    )
-
-    target_link_libraries(train_gpu_naive 
-        CUDA::cudart
-        OpenMP::OpenMP_CXX
-    )
-
+    target_link_libraries(train_gpu_naive CUDA::cudart)
     target_compile_definitions(train_gpu_naive PRIVATE USE_CUDA)
 
-    if(MSVC)
-        target_compile_options(train_gpu_naive PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2 /openmp>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
-        )
-    else()
-        target_compile_options(train_gpu_naive PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -march=native -fopenmp>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3,-fopenmp>
-        )
-    endif()
-
-    message(STATUS "GPU training executables 'train_gpu_optimized' and 'train_gpu_naive' will be built")
-
-    # =============================================================================
-    # GPU Test Executables
-    # =============================================================================
+    # GPU Naive Tests
+    add_executable(test_layers_gpu_naive
+        tests/tests_gpu_naive/test_layers_gpu_naive.cu
+        ${GPU_LAYER_SOURCES_NAIVE}
+    )
     
-    # Test GPU Layers
-    add_executable(test_layers_gpu
-        tests/test_layers_gpu.cu
-        ${GPU_LAYER_SOURCES}
+    add_executable(test_autoencoder_gpu_naive
+        tests/tests_gpu_naive/test_autoencoder_gpu_naive.cu
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
     )
-
-    set_target_properties(test_layers_gpu PROPERTIES
+    
+    set_target_properties(test_layers_gpu_naive PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "75;80;89"  
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-
-    target_include_directories(test_layers_gpu PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-    )
-
-    target_link_libraries(test_layers_gpu CUDA::cudart)
-    target_compile_definitions(test_layers_gpu PRIVATE USE_CUDA)
-
-    # Test GPU Autoencoder
-    add_executable(test_autoencoder_gpu
-        tests/test_autoencoder_gpu.cu
-        ${GPU_LAYER_SOURCES}
-        ${GPU_MODEL_SOURCES}
-    )
-
-    set_target_properties(test_autoencoder_gpu PROPERTIES
+    set_target_properties(test_autoencoder_gpu_naive PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES "75;80;89"  
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
 
-    target_include_directories(test_autoencoder_gpu PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
+    target_link_libraries(test_layers_gpu_naive CUDA::cudart)
+    target_link_libraries(test_autoencoder_gpu_naive CUDA::cudart)
+
+    message(STATUS "GPU Naive targets: train_gpu_naive, test_layers_gpu_naive, test_autoencoder_gpu_naive")
+
+    # -------------------------------------------------------------------------
+    # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
+    # -------------------------------------------------------------------------
+    set(GPU_LAYER_SOURCES_OPT_V1
+        src/layers_gpu_opt_v1/conv2d_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/relu_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/maxpool_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/upsample_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/mse_loss_gpu_opt_v1.cu
     )
 
-    target_link_libraries(test_autoencoder_gpu CUDA::cudart)
-    target_compile_definitions(test_autoencoder_gpu PRIVATE USE_CUDA)
+    set(GPU_MODEL_SOURCES_OPT_V1
+        src/models/autoencoder_gpu_opt_v1.cu
+    )
 
-    if(MSVC)
-        target_compile_options(test_layers_gpu PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
-        )
-        target_compile_options(test_autoencoder_gpu PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:/W4 /O2>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4,/O2>
-        )
-    else()
-        target_compile_options(test_layers_gpu PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3>
-        )
-        target_compile_options(test_autoencoder_gpu PRIVATE 
-            $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3>
-            $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-O3>
-        )
-    endif()
+    add_executable(train_gpu_opt_v1
+        src/train_gpu_opt_v1.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    set_target_properties(train_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_gpu_opt_v1 CUDA::cudart)
+    target_compile_definitions(train_gpu_opt_v1 PRIVATE USE_CUDA)
 
-    message(STATUS "GPU test executables 'test_layers_gpu' and 'test_autoencoder_gpu' will be built")
-     
-    target_link_libraries(train_cpu CUDA::cudart)
-    target_compile_definitions(train_cpu PRIVATE USE_CUDA)
+    # GPU Optimized v1 Tests
+    add_executable(test_layers_gpu_opt_v1
+        tests/tests_gpu_opt_v1/test_layers_gpu_opt_v1.cu
+        ${GPU_LAYER_SOURCES_OPT_V1}
+    )
+    
+    add_executable(test_autoencoder_gpu_opt_v1
+        tests/tests_gpu_opt_v1/test_autoencoder_gpu_opt_v1.cu
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    
+    set_target_properties(test_layers_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    set_target_properties(test_autoencoder_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+
+    target_link_libraries(test_layers_gpu_opt_v1 CUDA::cudart)
+    target_link_libraries(test_autoencoder_gpu_opt_v1 CUDA::cudart)
+
+    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, test_layers_gpu_opt_v1, test_autoencoder_gpu_opt_v1")
 endif()
 
-
-# Create data directory
+# Create data and models directories
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_naive)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_optimized)

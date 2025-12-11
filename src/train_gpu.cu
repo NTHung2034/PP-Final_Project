@@ -5,6 +5,13 @@
 #include <chrono>
 #include <cstring>
 
+// Simple VRAM usage query
+size_t get_vram_used_mb() {
+    size_t free, total;
+    cudaMemGetInfo(&free, &total);
+    return (total - free) / (1024 * 1024);
+}
+
 /**
  * =============================================================================
  * TRAINING LOOP WITH STREAM-BASED PIPELINING
@@ -457,6 +464,8 @@ int main(int argc, char** argv) {
     // Create trainer
     GPUTrainer trainer(batch_size);
     
+    printf("VRAM usage: %zu MB\n\n", get_vram_used_mb());
+    
     // Training loop
     int num_batches = train_dataset.size() / batch_size;
     
@@ -485,6 +494,7 @@ int main(int argc, char** argv) {
     
     printf("Training completed in %ld seconds (%.2f minutes)\n", 
            training_duration.count(), training_duration.count() / 60.0f);
+    printf("Final VRAM usage: %zu MB\n", get_vram_used_mb());
     
     // Save trained model
     trainer.save_model("autoencoder_weights.bin");
