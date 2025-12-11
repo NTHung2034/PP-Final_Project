@@ -1,6 +1,7 @@
-// Autoencoder GPU Optimized v1 - Memory Pool Strategy
 #pragma once
 
+#include <string>
+#include <vector>
 #include "data/gpu_tensor_opt.cuh"
 #include "layers_gpu_opt_v1/conv2d_gpu_opt_v1.cuh"
 #include "layers_gpu_opt_v1/relu_gpu_opt_v1.cuh"

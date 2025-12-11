@@ -1,18 +1,20 @@
-// GPU Tensor and Memory Pool for Optimized v1
 #pragma once
 #include <cuda_runtime.h>
 #include <cstdio>
 #include <cstdlib>
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "CUDA Error at %s:%d - %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        exit(EXIT_FAILURE); \
-    } \
-} while(0)
+#define CUDA_CHECK(call)\
+{\
+    const cudaError_t error = call;\
+    if (error != cudaSuccess)\
+    {\
+        fprintf(stderr, "Error: %s:%d, ", __FILE__, __LINE__);\
+        fprintf(stderr, "code: %d, reason: %s\n", error,\
+                cudaGetErrorString(error));\
+        exit(EXIT_FAILURE);\
+    }\
+}
 
-// Lightweight GPU tensor - device memory only
 struct GPUTensorOpt {
     float* d_data;
     int batch, channels, height, width, size;
@@ -83,10 +85,36 @@ struct GPUMemoryPool {
     int* pool1_idx;
     int* pool2_idx;
     
+    // === V2 additions: CUDA Streams for overlapping operations ===
+    cudaStream_t stream1;  // Main compute stream
+    cudaStream_t stream2;  // Secondary stream for parallel gradient computation
+    cudaStream_t stream3;  // Third stream for bias gradient overlap
+    bool streams_created;
+    
     int batch_size;
     bool allocated;
 
-    GPUMemoryPool() : pool1_idx(nullptr), pool2_idx(nullptr), batch_size(0), allocated(false) {}
+    GPUMemoryPool() : pool1_idx(nullptr), pool2_idx(nullptr), 
+                      stream1(nullptr), stream2(nullptr), stream3(nullptr),
+                      streams_created(false), batch_size(0), allocated(false) {}
+    
+    // V2: Create streams for parallel execution
+    void create_streams() {
+        if (streams_created) return;
+        CUDA_CHECK(cudaStreamCreate(&stream1));
+        CUDA_CHECK(cudaStreamCreate(&stream2));
+        CUDA_CHECK(cudaStreamCreate(&stream3));
+        streams_created = true;
+    }
+    
+    void destroy_streams() {
+        if (!streams_created) return;
+        if (stream1) cudaStreamDestroy(stream1);
+        if (stream2) cudaStreamDestroy(stream2);
+        if (stream3) cudaStreamDestroy(stream3);
+        stream1 = stream2 = stream3 = nullptr;
+        streams_created = false;
+    }
 
     void allocate(int bs) {
         if (allocated && bs == batch_size) return;
@@ -125,6 +153,7 @@ struct GPUMemoryPool {
 
     void free() {
         if (!allocated) return;
+        destroy_streams();  // V2: Clean up streams
         act1.free(); act2.free(); act3.free(); act4.free(); act5.free();
         act6.free(); act7.free(); act8.free(); output.free();
         grad_out.free(); grad8.free(); grad7.free(); grad6.free(); grad5.free();

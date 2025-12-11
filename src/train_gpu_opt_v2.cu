@@ -1,6 +1,6 @@
-// CIFAR-10 Autoencoder Training - GPU Optimized v1
-// Optimizations: Memory Pool, Shared Memory Tiling, Constant Memory for Biases
-#include "models/autoencoder_gpu_opt_v1.cuh"
+// CIFAR-10 Autoencoder Training - GPU Optimized v2
+// Optimizations: CUDA Streams, Kernel Fusion, Double Buffering Pipeline
+#include "models/autoencoder_gpu_opt_v2.cuh"
 #include "data/cifar10_loader.h"
 #include "config.h"
 #include <iostream>
@@ -81,8 +81,8 @@ public:
             return;
         }
         
-        out << "=== GPU OPTIMIZED v1 AUTOENCODER TRAINING SUMMARY ===\n\n";
-        out << "Optimizations: Memory Pool, Shared Memory Tiling, Constant Memory\n\n";
+        out << "=== GPU OPTIMIZED v2 AUTOENCODER TRAINING SUMMARY ===\n\n";
+        out << "Optimizations: CUDA Streams, Kernel Fusion, Double Buffering Pipeline\n\n";
         out << "Total Training Time: " << total_training_time << " seconds\n";
         out << "Average Time Per Epoch: " << (total_training_time / epoch_losses.size()) << " seconds\n";
         out << "Number of Epochs: " << epoch_losses.size() << "\n\n";
@@ -101,7 +101,7 @@ public:
 };
 
 // Training function
-void train_autoencoder_gpu_opt_v1(
+void train_autoencoder_gpu_opt_v2(
     CIFAR10Loader& loader,
     int batch_size,
     int epochs,
@@ -109,8 +109,8 @@ void train_autoencoder_gpu_opt_v1(
     const std::string& save_dir)
 {
     std::cout << "\n" << std::string(70, '=') << std::endl;
-    std::cout << "GPU OPTIMIZED v1 AUTOENCODER TRAINING" << std::endl;
-    std::cout << "(Memory Pool + Shared Memory Tiling + Constant Memory)" << std::endl;
+    std::cout << "GPU OPTIMIZED v2 AUTOENCODER TRAINING" << std::endl;
+    std::cout << "(CUDA Streams + Kernel Fusion + Double Buffering Pipeline)" << std::endl;
     std::cout << std::string(70, '=') << std::endl;
     std::cout << "Configuration:" << std::endl;
     std::cout << "  Batch size: " << batch_size << std::endl;
@@ -118,10 +118,11 @@ void train_autoencoder_gpu_opt_v1(
     std::cout << "  Learning rate: " << learning_rate << std::endl;
     std::cout << "  Training samples: " << loader.train_size() << std::endl;
     std::cout << "  Save directory: " << save_dir << std::endl;
+    std::cout << "  Double buffering: ENABLED (overlap H2D transfer with compute)" << std::endl;
     std::cout << std::string(70, '=') << "\n" << std::endl;
     
-    // Create model (allocates all memory once via Memory Pool)
-    AutoencoderGPUOptV1 model(batch_size);
+    // Create model (allocates all memory + streams)
+    AutoencoderGPUOptV2 model(batch_size);
     
     // Training statistics
     TrainingStats stats;
@@ -140,17 +141,35 @@ void train_autoencoder_gpu_opt_v1(
         float epoch_loss = 0.0f;
         int batches_processed = 0;
         
-        // Batch loop
+        // === PIPELINED BATCH LOOP WITH DOUBLE BUFFERING ===
+        // Load first batch synchronously to prime the pipeline
+        float* first_batch = loader.get_batch(batch_size);
+        if (!first_batch) continue;
+        
+        // Copy first batch to buffer 0 (synchronous)
+        model.copy_input_async(first_batch, batch_size);
+        model.swap_buffers();  // Now buffer 0 has first batch, current_buffer = 0
+        
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
-            // Get batch data pointer from loader
-            float* batch_data = loader.get_batch(batch_size);
-            if (!batch_data) break;
+            // Start async copy of NEXT batch while training CURRENT batch
+            float* next_batch = nullptr;
+            if (batch_idx < num_batches - 1) {
+                next_batch = loader.get_batch(batch_size);
+                if (next_batch) {
+                    model.copy_input_async(next_batch, batch_size);  // Async copy to alternate buffer
+                }
+            }
             
-            // Forward-Backward-Update in one call (no allocations!)
-            float batch_loss = model.train_step(batch_data, batch_size, learning_rate);
+            // Train current batch (overlaps with next batch transfer)
+            float batch_loss = model.train_step(learning_rate);
             
             epoch_loss += batch_loss;
             batches_processed++;
+            
+            // Swap buffers for next iteration (waits for async copy to complete)
+            if (next_batch) {
+                model.swap_buffers();
+            }
             
             // Display progress
             if ((batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1) {
@@ -193,7 +212,7 @@ int main(int argc, char** argv) {
         
         std::cout << "\n";
         std::cout << "╔══════════════════════════════════════════════════════════════════╗\n";
-        std::cout << "║   CIFAR-10 AUTOENCODER - GPU OPTIMIZED v1 (Memory Optimization)  ║\n";
+        std::cout << "║   CIFAR-10 AUTOENCODER - GPU OPTIMIZED v2 (Streams + Fusion)     ║\n";
         std::cout << "╚══════════════════════════════════════════════════════════════════╝\n";
         std::cout << "\n";
         
@@ -209,14 +228,16 @@ int main(int argc, char** argv) {
         CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
         std::cout << "Using GPU: " << prop.name << std::endl;
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
-        std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
+        std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB" << std::endl;
+        std::cout << "Concurrent Kernels: " << (prop.concurrentKernels ? "Yes" : "No") << std::endl;
+        std::cout << "Max Streams: " << prop.asyncEngineCount << "\n" << std::endl;
         
         // Load dataset using CIFAR_BIN_DIR from config.h
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
         
         // Train model
-        train_autoencoder_gpu_opt_v1(
+        train_autoencoder_gpu_opt_v2(
             loader,
             batch_size,
             epochs,
