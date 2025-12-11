@@ -163,7 +163,7 @@ if(CUDA_AVAILABLE)
 
     # GPU Naive Step 4 - SVM Training
     add_executable(train_step4_naive
-        src/train_step4_naive.cu
+        src/models_svm/train_step4_naive.cu
         ${DATA_SOURCES}
         ${GPU_LAYER_SOURCES_NAIVE}
         ${GPU_MODEL_SOURCES_NAIVE}

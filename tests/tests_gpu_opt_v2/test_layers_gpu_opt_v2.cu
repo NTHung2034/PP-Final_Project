@@ -46,6 +46,11 @@ void test_conv2d_forward_stream() {
     input.allocate(N, C_in, H, W);
     output.allocate(N, C_out, H, W);
     
+    // Initialize input with random values (critical for test to pass!)
+    float* h_input = new float[input.size];
+    init_random(h_input, input.size, 1.0f);
+    cudaMemcpy(input.d_data, h_input, input.size * sizeof(float), cudaMemcpyHostToDevice);
+    
     GPUConvWeightsOpt weights(C_out, C_in, 3, 3);
     weights.initXavier();
     
@@ -69,6 +74,7 @@ void test_conv2d_forward_stream() {
     print_test_result("Conv2D forward produces output", has_values);
     
     // Clean up
+    delete[] h_input;
     delete[] h_out;
     input.free();
     output.free();

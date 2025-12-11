@@ -1,5 +1,5 @@
 // Test GPU Optimized v2 Autoencoder
-// Optimizations: CUDA Streams, Kernel Fusion, Full Unrolling
+// Optimizations: CUDA Streams, Kernel Fusion, Double Buffering Pipeline
 #include <iostream>
 #include <iomanip>
 #include <cmath>
@@ -40,7 +40,8 @@ void test_model_construction() {
     print_test_result("Model created", true);
     print_test_result("Memory pool allocated", model.pool.allocated);
     print_test_result("Streams created", model.pool.streams_created);
-    print_test_result("Input buffer allocated", model.input_buffer.d_data != nullptr);
+    print_test_result("Input buffer[0] allocated", model.input_buffer[0].d_data != nullptr);
+    print_test_result("Input buffer[1] allocated", model.input_buffer[1].d_data != nullptr);
     print_test_result("Conv1 weights allocated", model.conv1->d_weights != nullptr);
 }
 
@@ -57,7 +58,10 @@ void test_forward_pass() {
     float* h_input = new float[input_size];
     init_random(h_input, input_size);
     
-    float loss = model.forward(h_input, batch_size);
+    // Use new double-buffer API
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
+    float loss = model.forward(batch_size);
     
     print_test_result("Forward pass completed", true);
     print_test_result("Loss is positive", loss > 0.0f);
@@ -82,14 +86,16 @@ void test_backward_pass() {
     float* h_input = new float[input_size];
     init_random(h_input, input_size);
     
-    // Forward
-    float loss = model.forward(h_input, batch_size);
+    // Forward with new API
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
+    float loss = model.forward(batch_size);
     
     // Save weights before backward
     float w_before;
     cudaMemcpy(&w_before, model.conv1->d_weights, sizeof(float), cudaMemcpyDeviceToHost);
     
-    // Backward + update
+    // Backward + update (model syncs all streams internally)
     model.backward(learning_rate);
     
     // Check weights changed
@@ -118,9 +124,20 @@ void test_train_step() {
     float* h_input = new float[input_size];
     init_random(h_input, input_size);
     
-    float loss1 = model.train_step(h_input, batch_size, learning_rate);
-    float loss2 = model.train_step(h_input, batch_size, learning_rate);
-    float loss3 = model.train_step(h_input, batch_size, learning_rate);
+    // Train step 1
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
+    float loss1 = model.train_step(learning_rate);
+    
+    // Train step 2
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
+    float loss2 = model.train_step(learning_rate);
+    
+    // Train step 3
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
+    float loss3 = model.train_step(learning_rate);
     
     print_test_result("Multiple train steps", true);
     print_test_result("Loss decreasing", loss3 < loss1);
@@ -131,10 +148,10 @@ void test_train_step() {
 }
 
 // =============================================================================
-// Test Training Loop (Multiple Epochs)
+// Test Training Loop (Multiple Epochs) - With Pipelining
 // =============================================================================
 void test_training_loop() {
-    std::cout << "\n--- Testing Training Loop ---\n";
+    std::cout << "\n--- Testing Training Loop (with double buffering) ---\n";
     
     int batch_size = 16;
     float learning_rate = 0.001f;
@@ -151,10 +168,25 @@ void test_training_loop() {
     for (int epoch = 0; epoch < num_epochs; epoch++) {
         float epoch_loss = 0.0f;
         
+        // Prime the pipeline
+        init_random(h_input, input_size);
+        model.copy_input_async(h_input, batch_size);
+        model.swap_buffers();
+        
         for (int batch = 0; batch < num_batches; batch++) {
-            init_random(h_input, input_size);
-            float loss = model.train_step(h_input, batch_size, learning_rate);
+            // Start copying next batch while training current
+            if (batch < num_batches - 1) {
+                init_random(h_input, input_size);
+                model.copy_input_async(h_input, batch_size);
+            }
+            
+            float loss = model.train_step(learning_rate);
             epoch_loss += loss;
+            
+            // Swap for next batch
+            if (batch < num_batches - 1) {
+                model.swap_buffers();
+            }
         }
         
         epoch_losses.push_back(epoch_loss / num_batches);
@@ -169,10 +201,10 @@ void test_training_loop() {
 }
 
 // =============================================================================
-// Performance Benchmark
+// Performance Benchmark (with double buffering)
 // =============================================================================
 void benchmark_performance() {
-    std::cout << "\n--- Performance Benchmark ---\n";
+    std::cout << "\n--- Performance Benchmark (with double buffering) ---\n";
     
     int batch_size = 32;
     float learning_rate = 0.001f;
@@ -186,8 +218,12 @@ void benchmark_performance() {
     init_random(h_input, input_size);
     
     // Warmup
+    model.copy_input_async(h_input, batch_size);
+    model.swap_buffers();
     for (int i = 0; i < warmup_iterations; i++) {
-        model.train_step(h_input, batch_size, learning_rate);
+        model.copy_input_async(h_input, batch_size);
+        model.train_step(learning_rate);
+        model.swap_buffers();
     }
     cudaDeviceSynchronize();
     
@@ -198,7 +234,9 @@ void benchmark_performance() {
     
     cudaEventRecord(start);
     for (int i = 0; i < benchmark_iterations; i++) {
-        model.train_step(h_input, batch_size, learning_rate);
+        model.copy_input_async(h_input, batch_size);
+        model.train_step(learning_rate);
+        model.swap_buffers();
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -227,7 +265,7 @@ void benchmark_performance() {
 int main() {
     std::cout << "╔════════════════════════════════════════════════════════════════╗\n";
     std::cout << "║    GPU OPTIMIZED v2 AUTOENCODER TESTS                          ║\n";
-    std::cout << "║    (CUDA Streams + Kernel Fusion + Full Unrolling)             ║\n";
+    std::cout << "║    (CUDA Streams + Kernel Fusion + Double Buffering)           ║\n";
     std::cout << "╚════════════════════════════════════════════════════════════════╝\n";
     
     srand(42);
