@@ -7,7 +7,13 @@
 #include <iomanip>
 #include <fstream>
 #include <vector>
-#include <string>
+
+// Simple VRAM usage query
+size_t get_vram_used_mb() {
+    size_t free, total;
+    cudaMemGetInfo(&free, &total);
+    return (total - free) / (1024 * 1024);
+}
 
 // CUDA event-based timer for accurate GPU timing
 class CUDATimer {
@@ -123,6 +129,8 @@ void train_autoencoder_gpu_opt_v1(
     // Create model (allocates all memory once via Memory Pool)
     AutoencoderGPUOptV1 model(batch_size);
     
+    std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
+    
     // Training statistics
     TrainingStats stats;
     CUDATimer gpu_timer;
@@ -181,6 +189,7 @@ void train_autoencoder_gpu_opt_v1(
     
     model.save_weights(save_dir);
     stats.save_to_file(save_dir + "/training_summary.txt");
+    std::cout << "Final VRAM usage: " << get_vram_used_mb() << " MB\n";
 }
 
 int main(int argc, char** argv) {
@@ -210,7 +219,7 @@ int main(int argc, char** argv) {
         std::cout << "Using GPU: " << prop.name << std::endl;
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
         std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
-        
+        std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
         // Load dataset using CIFAR_BIN_DIR from config.h
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
