@@ -106,17 +106,13 @@ namespace ImageUtils
         file.close();
     }
 
-    void save_reconstruction_samples(const Tensor &original, const Tensor &reconstructed,
+    void save_reconstruction_samples(const float *original, const float *reconstructed,
+                                     int batch_size, int channels, int height, int width,
                                      const std::string &output_dir, const std::string &prefix,
                                      int num_samples)
     {
         // Create output directory if it doesn't exist
         mkdir(output_dir.c_str(), 0755);
-
-        int batch_size = original.batch();
-        int channels = original.channels();
-        int height = original.height();
-        int width = original.width();
 
         num_samples = std::min(num_samples, batch_size);
 
@@ -127,8 +123,8 @@ namespace ImageUtils
             // Calculate offset for this image in the batch
             int image_offset = i * channels * height * width;
 
-            const float *orig_ptr = original.raw_data() + image_offset;
-            const float *recon_ptr = reconstructed.raw_data() + image_offset;
+            const float *orig_ptr = original + image_offset;
+            const float *recon_ptr = reconstructed + image_offset;
 
             // Save comparison image
             std::string filepath = output_dir + "/" + prefix + "_sample_" + std::to_string(i) + ".ppm";
@@ -139,82 +135,4 @@ namespace ImageUtils
                   << output_dir << "/" << prefix << "_sample_*.ppm\n";
     }
 
-    float calculate_psnr(const Tensor &original, const Tensor &reconstructed)
-    {
-        if (original.size() != reconstructed.size())
-        {
-            LOG_ERROR("Tensor size mismatch in PSNR calculation");
-            return 0.0f;
-        }
-
-        const float *orig_data = original.raw_data();
-        const float *recon_data = reconstructed.raw_data();
-        size_t n = original.size();
-
-        // Calculate MSE
-        double mse = 0.0;
-        for (size_t i = 0; i < n; ++i)
-        {
-            double diff = orig_data[i] - recon_data[i];
-            mse += diff * diff;
-        }
-        mse /= n;
-
-        if (mse < 1e-10)
-            return 100.0f; // Perfect reconstruction
-
-        // PSNR = 10 * log10(MAX^2 / MSE)
-        // For normalized images [0,1], MAX = 1
-        float psnr = 10.0f * std::log10(1.0f / mse);
-        return psnr;
-    }
-
-    float calculate_ssim(const Tensor &original, const Tensor &reconstructed)
-    {
-        // Simplified SSIM calculation (averaged over all pixels)
-        if (original.size() != reconstructed.size())
-        {
-            LOG_ERROR("Tensor size mismatch in SSIM calculation");
-            return 0.0f;
-        }
-
-        const float *orig_data = original.raw_data();
-        const float *recon_data = reconstructed.raw_data();
-        size_t n = original.size();
-
-        // Calculate means
-        double mean_x = 0.0, mean_y = 0.0;
-        for (size_t i = 0; i < n; ++i)
-        {
-            mean_x += orig_data[i];
-            mean_y += recon_data[i];
-        }
-        mean_x /= n;
-        mean_y /= n;
-
-        // Calculate variances and covariance
-        double var_x = 0.0, var_y = 0.0, cov_xy = 0.0;
-        for (size_t i = 0; i < n; ++i)
-        {
-            double dx = orig_data[i] - mean_x;
-            double dy = recon_data[i] - mean_y;
-            var_x += dx * dx;
-            var_y += dy * dy;
-            cov_xy += dx * dy;
-        }
-        var_x /= n;
-        var_y /= n;
-        cov_xy /= n;
-
-        // SSIM formula (simplified, global)
-        const double C1 = 0.01 * 0.01; // (K1*L)^2
-        const double C2 = 0.03 * 0.03; // (K2*L)^2
-
-        double numerator = (2.0 * mean_x * mean_y + C1) * (2.0 * cov_xy + C2);
-        double denominator = (mean_x * mean_x + mean_y * mean_y + C1) * (var_x + var_y + C2);
-
-        float ssim = static_cast<float>(numerator / denominator);
-        return ssim;
-    }
-
-} // namespace ImageUtils
+}

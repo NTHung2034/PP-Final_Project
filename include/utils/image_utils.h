@@ -7,10 +7,14 @@ namespace ImageUtils
 {
 
     // Save a batch of images as PPM files (original vs reconstructed)
-    // Creates side-by-side comparison images
+
     void save_reconstruction_samples(
-        const Tensor &original,
-        const Tensor &reconstructed,
+        const float *original,
+        const float *reconstructed,
+        int batch_size,
+        int channels,
+        int height,
+        int width,
         const std::string &output_dir,
         const std::string &prefix,
         int num_samples = 8);
@@ -30,9 +34,4 @@ namespace ImageUtils
         int width,
         const std::string &filepath);
 
-    // Calculate PSNR (Peak Signal-to-Noise Ratio) between two images
-    float calculate_psnr(const Tensor &original, const Tensor &reconstructed);
-
-    // Calculate SSIM (Structural Similarity Index) - simplified version
-    float calculate_ssim(const Tensor &original, const Tensor &reconstructed);
 }
