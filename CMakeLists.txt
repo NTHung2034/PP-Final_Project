@@ -97,7 +97,7 @@ add_executable(test_autoencoder_cpu
 # CPU Training
 # =============================================================================
 add_executable(train_cpu
-    src/train_cpu_v2.cpp
+    src/train_cpu.cpp
     ${DATA_SOURCES}
     ${CPU_LAYER_SOURCES}
     ${CPU_MODEL_SOURCES}
