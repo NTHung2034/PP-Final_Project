@@ -9,24 +9,24 @@
 #include <vector>
 
 // Simple VRAM usage query
-size_t get_vram_used_mb_v2() {
+size_t get_vram_used_mb() {
     size_t free, total;
     cudaMemGetInfo(&free, &total);
     return (total - free) / (1024 * 1024);
 }
 
 // CUDA event-based timer for accurate GPU timing
-class CUDATimerV2 {
+class CUDATimer {
 private:
     cudaEvent_t start_event, stop_event;
     
 public:
-    CUDATimerV2() {
+    CUDATimer() {
         CUDA_CHECK(cudaEventCreate(&start_event));
         CUDA_CHECK(cudaEventCreate(&stop_event));
     }
     
-    ~CUDATimerV2() {
+    ~CUDATimer() {
         cudaEventDestroy(start_event);
         cudaEventDestroy(stop_event);
     }
@@ -129,21 +129,20 @@ void train_autoencoder_gpu_opt_v2(
     // Create model (allocates all memory once via Memory Pool)
     AutoencoderGPUOptV2 model(batch_size);
     
-    std::cout << "VRAM usage: " << get_vram_used_mb_v2() << " MB\n\n";
+    std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
     
     // Training statistics
     TrainingStatsV2 stats;
-    CUDATimerV2 gpu_timer;
+    CUDATimer gpu_timer;
     
     int num_batches = loader.train_size() / batch_size;
     std::cout << "Batches per epoch: " << num_batches << "\n" << std::endl;
     
-    // Main training loop
+    // Main training loop   
     for (int epoch = 0; epoch < epochs; epoch++) {
         gpu_timer.start();
         
         loader.shuffle();
-        loader.reset();
         
         float epoch_loss = 0.0f;
         int batches_processed = 0;
@@ -194,7 +193,7 @@ void train_autoencoder_gpu_opt_v2(
     
     model.save_weights(save_dir);
     stats.save_to_file(save_dir + "/training_summary.txt");
-    std::cout << "Final VRAM usage: " << get_vram_used_mb_v2() << " MB\n";
+    std::cout << "Final VRAM usage: " << get_vram_used_mb() << " MB\n";
 }
 
 int main(int argc, char** argv) {
@@ -224,7 +223,7 @@ int main(int argc, char** argv) {
         std::cout << "Using GPU: " << prop.name << std::endl;
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
         std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
-        std::cout << "VRAM usage: " << get_vram_used_mb_v2() << " MB\n\n";
+        std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
         
         // Load dataset using CIFAR_BIN_DIR from config.h
         CIFAR10Loader loader(CIFAR_BIN_DIR);

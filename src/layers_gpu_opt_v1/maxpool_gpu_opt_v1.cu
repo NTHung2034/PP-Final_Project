@@ -17,7 +17,6 @@ __global__ void maxpool2d_forward_kernel(
     float max_val = -INFINITY;
     int max_idx = 0;
     
-    #pragma unroll
     for (int ph = 0; ph < 2; ph++) {
         for (int pw = 0; pw < 2; pw++) {
             int h_in = h_out * 2 + ph;

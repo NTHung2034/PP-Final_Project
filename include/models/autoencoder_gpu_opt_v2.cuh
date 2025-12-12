@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "data/gpu_tensor_opt_v2.cuh"
 #include "layers_gpu_opt_v2/conv2d_gpu_opt_v2.cuh"
 #include "layers_gpu_opt_v2/relu_gpu_opt_v2.cuh"

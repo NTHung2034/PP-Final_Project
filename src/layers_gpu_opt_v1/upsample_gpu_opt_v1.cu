@@ -33,7 +33,6 @@ __global__ void upsample2d_backward_kernel(
     int n = tmp / C;
     
     float grad = 0.0f;
-    #pragma unroll
     for (int dh = 0; dh < 2; dh++) {
         for (int dw = 0; dw < 2; dw++) {
             int h_out = h_in * 2 + dh;

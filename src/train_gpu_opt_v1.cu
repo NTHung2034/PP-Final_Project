@@ -143,7 +143,6 @@ void train_autoencoder_gpu_opt_v1(
         gpu_timer.start();
         
         loader.shuffle();
-        loader.reset();
         
         float epoch_loss = 0.0f;
         int batches_processed = 0;

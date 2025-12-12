@@ -79,9 +79,7 @@ __global__ void conv2d_forward_tiled_kernel(
         
         // Convolution from shared memory
         if (h_out < H_out && w_out < W_out) {
-            #pragma unroll
             for (int kh = 0; kh < KERNEL_SIZE; kh++) {
-                #pragma unroll
                 for (int kw = 0; kw < KERNEL_SIZE; kw++) {
                     int weight_idx = c_out * (C_in * KERNEL_SIZE * KERNEL_SIZE) + c_in * (KERNEL_SIZE * KERNEL_SIZE) + kh * KERNEL_SIZE + kw;
                     sum += s_input[ty + kh][tx + kw] * weights[weight_idx];
@@ -139,7 +137,6 @@ __global__ void conv2d_backward_input_kernel(
     
     float grad = 0.0f;
     
-    #pragma unroll
     for (int c_out = 0; c_out < C_out; c_out++) {
         for (int kh = 0; kh < KERNEL_SIZE; kh++) {
             for (int kw = 0; kw < KERNEL_SIZE; kw++) {
