@@ -26,9 +26,16 @@ int main()
         MemoryTracker::init();
 
         // Load data
+        cout << "Loading CIFAR-10 dataset...\n";
+        auto data_load_start = std::chrono::high_resolution_clock::now();
+
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
-        cout << "Data: " << loader.train_size() << " images loaded\n";
+
+        auto data_load_end = std::chrono::high_resolution_clock::now();
+        double data_load_time = std::chrono::duration<double>(data_load_end - data_load_start).count();
+
+        cout << "Data loading completed in " << std::fixed << std::setprecision(2) << data_load_time << "s\n";
         cout << "Memory after data load: " << MemoryTracker::format_bytes(MemoryTracker::get_current_usage()) << "\n";
 
         // Initialize model
