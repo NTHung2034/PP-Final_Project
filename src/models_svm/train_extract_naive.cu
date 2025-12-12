@@ -125,16 +125,13 @@ int main(int argc, char** argv) {
         
         // Extract test features
         int num_test_batches = (num_test_samples + feature_batch_size - 1) / feature_batch_size;
-        
+
         for (int batch_idx = 0; batch_idx < num_test_batches; batch_idx++) {
             int start_idx = batch_idx * feature_batch_size;
             int actual_batch_size = std::min(feature_batch_size, num_test_samples - start_idx);
             
-            float* batch_data = train_loader.get_batch_at(start_idx + num_train_samples, actual_batch_size);
-            if (batch_data == nullptr) {
-                // Use test data directly
-                batch_data = train_loader.test_images() + start_idx * 3 * 32 * 32;
-            }
+            // Access test data directly
+            float* batch_data = train_loader.test_images() + start_idx * 3 * 32 * 32;
             
             GPUTensor input(actual_batch_size, 3, 32, 32, false);
             GPUTensor features(actual_batch_size, 128, 8, 8, false);

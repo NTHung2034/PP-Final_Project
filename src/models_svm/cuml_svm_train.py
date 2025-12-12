@@ -48,7 +48,7 @@ def print_per_class_accuracy(cm, class_names):
 
 def main():
     # Configuration
-    base_dir = "models/saved_weights/gpu_naive/svm_features"
+    base_dir = "../../models/saved_weights_gpu_naive/svm_features"
     if len(sys.argv) > 1:
         base_dir = sys.argv[1]
     
@@ -99,6 +99,20 @@ def main():
     
     print(f"Train samples: {len(y_train)}")
     print(f"Test samples: {len(y_test)}")
+    
+    # ====== Feature Normalization ======
+    print("\nNormalizing features...")
+    
+    # Compute mean and std from training set
+    mean = np.mean(X_train, axis=0, dtype=np.float32)
+    std = np.std(X_train, axis=0, dtype=np.float32)
+    std[std < 1e-8] = 1.0  # Avoid division by zero
+    
+    # Normalize both train and test
+    X_train = (X_train - mean) / std
+    X_test = (X_test - mean) / std
+    
+    print(f"Features normalized (mean=0, std=1)")
     print()
     
     # ====== Step 2: Train SVM ======
@@ -128,14 +142,25 @@ def main():
     # ====== Step 3: Evaluation ======
     print("=== Step 3: Evaluation ===")
     
-    # Training accuracy
+    # Batch size for prediction to avoid memory issues
+    pred_batch_size = 1000
+    
+    # Training accuracy with batch processing
     print("Evaluating on training set...")
-    train_pred = svm_classifier.predict(X_train)
+    train_pred = np.zeros(len(y_train), dtype=np.int32)
+    for i in range(0, len(y_train), pred_batch_size):
+        end_idx = min(i + pred_batch_size, len(y_train))
+        train_pred[i:end_idx] = svm_classifier.predict(X_train[i:end_idx])
+        if (i // pred_batch_size + 1) % 10 == 0:
+            print(f"  Processed {end_idx}/{len(y_train)} samples")
     train_accuracy = accuracy_score(y_train, train_pred)
     
-    # Test accuracy
+    # Test accuracy with batch processing
     print("Evaluating on test set...")
-    test_pred = svm_classifier.predict(X_test)
+    test_pred = np.zeros(len(y_test), dtype=np.int32)
+    for i in range(0, len(y_test), pred_batch_size):
+        end_idx = min(i + pred_batch_size, len(y_test))
+        test_pred[i:end_idx] = svm_classifier.predict(X_test[i:end_idx])
     test_accuracy = accuracy_score(y_test, test_pred)
     
     print(f"\nTraining Accuracy: {train_accuracy * 100:.2f}%")
