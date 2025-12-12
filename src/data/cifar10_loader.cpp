@@ -78,7 +78,7 @@ bool CIFAR10Loader::load_test_data()
 
 void CIFAR10Loader::load_batch_file(const std::string &filepath, float *images, int *labels, int start_idx)
 {
-    std::ifstream file(filepath, std::ios::binary);
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
     if (!file)
     {
         throw std::runtime_error("Failed to open: " + filepath);
@@ -87,27 +87,40 @@ void CIFAR10Loader::load_batch_file(const std::string &filepath, float *images, 
     // Each record: 1 byte label + CIFAR_PIXELS bytes image (RGB planar format)
     constexpr int RECORD_SIZE = 1 + CIFAR_PIXELS;
     constexpr int IMAGES_PER_BATCH = CIFAR_TRAIN_IMAGES / 5; // 10000 images per file
-    std::vector<uint8_t> buffer(RECORD_SIZE);
+    constexpr size_t FILE_SIZE = RECORD_SIZE * IMAGES_PER_BATCH;
 
+    // OPTIMIZATION 1: Read entire file at once instead of record-by-record
+    // This reduces I/O system calls from 10000 to 1 per batch file
+    std::vector<uint8_t> file_buffer(FILE_SIZE);
+    file.seekg(0, std::ios::beg);
+    file.read(reinterpret_cast<char *>(file_buffer.data()), FILE_SIZE);
+    file.close();
+
+    if (!file)
+    {
+        throw std::runtime_error("Failed to read file: " + filepath);
+    }
+
+    // OPTIMIZATION 2: Pre-compute normalization constant
+    constexpr float NORM_FACTOR = 1.0f / 255.0f;
+
+    // Process all records from memory buffer
     for (int i = 0; i < IMAGES_PER_BATCH; i++)
     {
-        file.read(reinterpret_cast<char *>(buffer.data()), RECORD_SIZE);
-        if (!file)
-            break;
+        const uint8_t *record = file_buffer.data() + i * RECORD_SIZE;
 
         // Extract label (first byte)
-        labels[start_idx + i] = buffer[0];
+        labels[start_idx + i] = record[0];
 
-        // Extract and normalize image - CHW format
+        // Extract and normalize image - CHW format (linear copy, cache-friendly)
         float *img_ptr = images + (start_idx + i) * CIFAR_PIXELS;
+        const uint8_t *pixel_data = record + 1;
 
         for (int j = 0; j < CIFAR_PIXELS; j++)
         {
-            img_ptr[j] = static_cast<float>(buffer[1 + j]) / 255.0f;
+            img_ptr[j] = static_cast<float>(pixel_data[j]) * NORM_FACTOR;
         }
     }
-
-    file.close();
 }
 
 void CIFAR10Loader::shuffle()

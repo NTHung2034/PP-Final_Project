@@ -115,6 +115,15 @@ add_executable(extract_features_cpu
 )
 
 # =============================================================================
+# SVM Training (CPU)
+# =============================================================================
+add_executable(train_svm_cpu
+    src/models_svm/train_svm_cpu.cpp
+    ${DATA_SOURCES}
+    external/svm.cpp
+)
+
+# =============================================================================
 # GPU Support - Naive Implementation
 # =============================================================================
 if(CUDA_AVAILABLE)

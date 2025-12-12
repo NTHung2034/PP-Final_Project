@@ -1,6 +1,6 @@
 #include "data/cifar10_loader.h"
 #include "config.h"
-#include "../../external/libsvm/svm.h"
+#include "../../external/svm.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -14,6 +14,12 @@ const string MODEL_DIR = string(PROJECT_ROOT_DIR) + "/models/saved_weights";
 const string TRAIN_FEATURE_FILE = MODEL_DIR + "/train_features_cpu.bin";
 const string TEST_FEATURE_FILE = MODEL_DIR + "/test_features_cpu.bin";
 const string SVM_MODEL_FILE = MODEL_DIR + "/svm_model_cpu.bin";
+
+// Forward declarations
+svm_node *create_svm_nodes(const std::vector<float> &features);
+svm_problem *create_svm_problem(const std::vector<std::vector<float>> &features, const std::vector<int> &labels);
+void free_svm_problem(svm_problem *prob);
+double calculate_gamma_auto(int num_features);
 
 // Load features from binary file
 bool load_features(const string &filepath, std::vector<std::vector<float>> &features, int &num_samples, int &feature_dim)
@@ -110,6 +116,8 @@ int main()
         {
             throw std::runtime_error("Failed to load training features. Run extract_features_cpu first.");
         }
+        num_train = std::min(500, num_train);
+        train_features.resize(num_train);
         cout << "  " << num_train << " samples x " << feature_dim << " features\n";
 
         // Load training labels
@@ -130,6 +138,8 @@ int main()
         {
             throw std::runtime_error("Failed to load test features. Run extract_features_cpu first.");
         }
+        num_test = std::min(500, num_test);
+        test_features.resize(num_test);
         cout << "  " << num_test << " samples x " << test_feat_dim << " features\n";
 
         // Load test labels
