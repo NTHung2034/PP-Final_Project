@@ -205,6 +205,20 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_opt_v1 CUDA::cudart)
     target_compile_definitions(train_gpu_opt_v1 PRIVATE USE_CUDA)
 
+    # GPU Optimized v1 - Feature Extraction for cudaML SVM
+    add_executable(train_extract_opt_v1
+        src/models_svm/train_extract_opt_v1.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    set_target_properties(train_extract_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_extract_opt_v1 CUDA::cudart)
+    target_compile_definitions(train_extract_opt_v1 PRIVATE USE_CUDA)
+
     # GPU Optimized v1 Tests (disabled)
     # add_executable(test_layers_gpu_opt_v1
     #     tests/tests_gpu_opt_v1/test_layers_gpu_opt_v1.cu
@@ -229,7 +243,7 @@ if(CUDA_AVAILABLE)
     # target_link_libraries(test_layers_gpu_opt_v1 CUDA::cudart)
     # target_link_libraries(test_autoencoder_gpu_opt_v1 CUDA::cudart)
 
-    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, test_layers_gpu_opt_v1, test_autoencoder_gpu_opt_v1")
+    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, train_extract_opt_v1")
 
     # -------------------------------------------------------------------------
     # GPU Optimized v2 - CUDA Streams + Kernel Fusion + Full Unrolling
@@ -259,6 +273,20 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_opt_v2 CUDA::cudart)
     target_compile_definitions(train_gpu_opt_v2 PRIVATE USE_CUDA)
 
+    # GPU Optimized v2 - Feature Extraction for cudaML SVM
+    add_executable(train_extract_opt_v2
+        src/models_svm/train_extract_opt_v2.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V2}
+        ${GPU_MODEL_SOURCES_OPT_V2}
+    )
+    set_target_properties(train_extract_opt_v2 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_extract_opt_v2 CUDA::cudart)
+    target_compile_definitions(train_extract_opt_v2 PRIVATE USE_CUDA)
+
     # GPU Optimized v2 Tests (disabled)
     # add_executable(test_layers_gpu_opt_v2
     #     tests/tests_gpu_opt_v2/test_layers_gpu_opt_v2.cu
@@ -283,11 +311,13 @@ if(CUDA_AVAILABLE)
     # target_link_libraries(test_layers_gpu_opt_v2 CUDA::cudart)
     # target_link_libraries(test_autoencoder_gpu_opt_v2 CUDA::cudart)
 
-    message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, test_layers_gpu_opt_v2, test_autoencoder_gpu_opt_v2")
+    message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, train_extract_opt_v2")
 endif()
 
 # Create data and models directories
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_naive)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_opt_v1)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_opt_v2)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_optimized)
