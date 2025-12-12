@@ -48,7 +48,7 @@ def print_per_class_accuracy(cm, class_names):
 
 def main():
     # Configuration
-    base_dir = "../../models/saved_weights_gpu_naive/svm_features"
+    base_dir = "/content/PP-Final_Project/models/saved_weights_gpu_naive/svm_features"
     if len(sys.argv) > 1:
         base_dir = sys.argv[1]
     
