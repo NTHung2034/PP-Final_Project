@@ -1,6 +1,7 @@
 // CIFAR-10 Autoencoder Training - CPU v2 (Compact)
 #include "models/autoencoder_cpu.h"
 #include "data/cifar10_loader.h"
+#include "data/data_types.h"
 #include "utils/image_utils.h"
 #include "utils/memory_tracker.h"
 #include "config.h"
@@ -8,6 +9,7 @@
 #include <iomanip>
 #include <chrono>
 #include <fstream>
+#include <cstring>
 
 constexpr int TRAIN_IMAGES = 500;
 constexpr int SUB_EPOCHS = 2; // 20
@@ -40,13 +42,16 @@ int main()
 
         // Initialize model
         AutoencoderCPU model;
-        cout << "Memory after model init: " << MemoryTracker::format_bytes(MemoryTracker::get_current_usage()) << "\n";
-        const size_t OUT_SIZE = BATCH_SIZE * 3 * 32 * 32;
+        cout << "Memory after model init: " << MemoryTracker::format_bytes(MemoryTracker::get_current_usage());
 
         // Initial loss check
-        float *batch = loader.get_batch(BATCH_SIZE);
-        float init_loss = AutoencoderCPU::compute_loss(model.forward(batch, BATCH_SIZE), batch, OUT_SIZE);
-        cout << "Initial loss: " << std::fixed << std::setprecision(6) << init_loss << "\n\n";
+        float *batch_data = loader.get_batch(BATCH_SIZE);
+        Tensor input_tensor({BATCH_SIZE, 3, 32, 32}, false);
+        std::memcpy(input_tensor.raw_data(), batch_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
+
+        Tensor output = model.forward(input_tensor);
+        float init_loss = model.compute_loss(output, input_tensor);
+        cout << "\n(Initial loss check)\nInitial loss: " << std::fixed << std::setprecision(6) << init_loss;
 
         // Training
         std::vector<float> losses;
@@ -56,7 +61,7 @@ int main()
 
         for (int ep = 0; ep < SUB_EPOCHS; ++ep)
         {
-            cout << "\n--- Epoch " << (ep + 1) << "/" << SUB_EPOCHS << " ---\n";
+            cout << "\n\n\n--- Epoch " << (ep + 1) << "/" << SUB_EPOCHS << " ---\n";
 
             auto ep_start = std::chrono::high_resolution_clock::now();
             loader.shuffle();
@@ -66,11 +71,20 @@ int main()
 
             for (int b = 0; b < batches; ++b)
             {
-                float *imgs = loader.get_batch(BATCH_SIZE);
-                float *out = model.forward(imgs, BATCH_SIZE);
-                float batch_loss = AutoencoderCPU::compute_loss(out, imgs, OUT_SIZE);
+                // Get batch data as float*
+                float *batch_data = loader.get_batch(BATCH_SIZE);
+
+                // Create tensor from float* (NCHW format)
+                Tensor batch_tensor({BATCH_SIZE, 3, 32, 32}, false);
+                std::memcpy(batch_tensor.raw_data(), batch_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
+
+                // Forward pass
+                Tensor output = model.forward(batch_tensor);
+                float batch_loss = model.compute_loss(output, batch_tensor);
                 ep_loss += batch_loss;
-                model.backward(imgs, LEARNING_RATE);
+
+                // Backward pass
+                model.backward(batch_tensor, LEARNING_RATE);
 
                 // Display batch loss
                 cout << "  Batch " << std::setw(2) << (b + 1) << "/" << batches
@@ -97,12 +111,14 @@ int main()
             // Save reconstruction samples every 5 epochs
             if ((ep + 1) % 5 == 0)
             {
-                float *sample_imgs = loader.get_batch(BATCH_SIZE);
-                float *reconstructed = model.forward(sample_imgs, BATCH_SIZE);
+                float *sample_data = loader.get_batch(BATCH_SIZE);
+                Tensor sample_tensor({BATCH_SIZE, 3, 32, 32}, false);
+                std::memcpy(sample_tensor.raw_data(), sample_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
+
+                Tensor reconstructed = model.forward(sample_tensor);
 
                 ImageUtils::save_reconstruction_samples(
-                    sample_imgs, reconstructed,
-                    BATCH_SIZE, 3, 32, 32,
+                    sample_tensor, reconstructed,
                     std::string(MODEL_SAVE_DIR),
                     "epoch_" + std::to_string(ep + 1),
                     4 // Save 4 samples

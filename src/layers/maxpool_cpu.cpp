@@ -2,42 +2,25 @@
 #include <limits>
 #include <cstring>
 
-MaxPoolCPU::MaxPoolCPU(int pool_size) : pool_size_(pool_size) {}
-
-MaxPoolCPU::~MaxPoolCPU()
+MaxPoolCPU::MaxPoolCPU(int pool_size) : cached_input_(), pool_size_(pool_size) {}
+Tensor MaxPoolCPU::forward(const Tensor &input)
 {
-    delete[] output_buffer_;
-    delete[] grad_input_buffer_;
-}
+    cached_input_ = input;
 
-float *MaxPoolCPU::forward(const float *input, int batch, int channels, int in_h, int in_w, float *output)
-{
-    // Cache dimensions for backward pass
-    cached_batch_ = batch;
-    cached_channels_ = channels;
-    cached_in_h_ = in_h;
-    cached_in_w_ = in_w;
+    int batch = input.batch();
+    int channels = input.channels();
+    int in_h = input.height();
+    int in_w = input.width();
 
-    int out_h = get_output_height(in_h);
-    int out_w = get_output_width(in_w);
+    int out_h = in_h / pool_size_;
+    int out_w = in_w / pool_size_;
 
-    size_t output_size = static_cast<size_t>(batch) * channels * out_h * out_w;
+    Tensor output({batch, channels, out_h, out_w});
+    max_indices_.resize(output.size()); // store indices for backward pass
 
-    // Only allocate output buffer if we need internal storage
-    if (output == nullptr && output_size > output_buffer_size_)
-    {
-        delete[] output_buffer_;
-        output_buffer_ = new float[output_size];
-        output_buffer_size_ = output_size;
-    }
+    const float *in_data = input.data->data();
+    float *out_data = output.data->data();
 
-    // Resize max indices
-    max_indices_.resize(output_size);
-
-    // Use provided buffer or internal buffer
-    float *out_ptr = (output != nullptr) ? output : output_buffer_;
-
-    // Perform max pooling
     for (int n = 0; n < batch; ++n)
     {
         for (int c = 0; c < channels; ++c)
@@ -56,47 +39,42 @@ float *MaxPoolCPU::forward(const float *input, int batch, int channels, int in_h
                             int ih = oh * pool_size_ + ph;
                             int iw = ow * pool_size_ + pw;
                             int in_idx = ((n * channels + c) * in_h + ih) * in_w + iw;
-
-                            if (input[in_idx] > max_val)
+                            if (in_data[in_idx] > max_val)
                             {
-                                max_val = input[in_idx];
+                                max_val = in_data[in_idx];
                                 max_idx = in_idx;
                             }
                         }
                     }
 
                     int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
-                    out_ptr[out_idx] = max_val;
+                    out_data[out_idx] = max_val;
                     max_indices_[out_idx] = max_idx;
                 }
             }
         }
     }
 
-    return out_ptr;
+    return output;
 }
 
-float *MaxPoolCPU::backward(const float *grad_output)
+Tensor MaxPoolCPU::backward(const Tensor &grad_output)
 {
-    int batch = cached_batch_;
-    int channels = cached_channels_;
-    int in_h = cached_in_h_;
-    int in_w = cached_in_w_;
-    int out_h = get_output_height(in_h);
-    int out_w = get_output_width(in_w);
+    // Create gradient tensor with same shape as input
+    int batch = cached_input_.batch();
+    int channels = cached_input_.channels();
+    int in_h = cached_input_.height();
+    int in_w = cached_input_.width();
 
-    size_t grad_input_size = static_cast<size_t>(batch) * channels * in_h * in_w;
-
-    // Allocate gradient input buffer if needed
-    if (grad_input_size > grad_input_buffer_size_)
-    {
-        delete[] grad_input_buffer_;
-        grad_input_buffer_ = new float[grad_input_size];
-        grad_input_buffer_size_ = grad_input_size;
-    }
+    Tensor grad_input({batch, channels, in_h, in_w});
+    float *grad_in_data = grad_input.data->data();
+    const float *grad_out_data = grad_output.data->data();
 
     // Zero initialize gradient input
-    std::memset(grad_input_buffer_, 0, grad_input_size * sizeof(float));
+    std::memset(grad_in_data, 0, grad_input.size() * sizeof(float));
+
+    int out_h = in_h / pool_size_;
+    int out_w = in_w / pool_size_;
 
     // Distribute gradients only to max positions
     for (int n = 0; n < batch; ++n)
@@ -109,11 +87,11 @@ float *MaxPoolCPU::backward(const float *grad_output)
                 {
                     int out_idx = ((n * channels + c) * out_h + oh) * out_w + ow;
                     int max_idx = max_indices_[out_idx];
-                    grad_input_buffer_[max_idx] += grad_output[out_idx];
+                    grad_in_data[max_idx] += grad_out_data[out_idx];
                 }
             }
         }
     }
 
-    return grad_input_buffer_;
+    return grad_input;
 }

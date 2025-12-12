@@ -1,281 +1,88 @@
 #include "models/autoencoder_cpu.h"
 #include <fstream>
 #include <cmath>
-#include <cstring>
-#include <stdexcept>
-
-// ============================================================================
-// CONSTRUCTOR / DESTRUCTOR
-// ============================================================================
 
 AutoencoderCPU::AutoencoderCPU()
 {
-    // ========================
-    // Initialize ENCODER layers
-    // ========================
-    // Conv1: 3 → 256, kernel=3, stride=1, padding=1
-    // Input: [batch, 3, 32, 32] → Output: [batch, 256, 32, 32]
-    conv1_ = std::make_unique<Conv2DCPU>(3, 256, 3, 1, 1);
+    // Initialize encoder layers
+    conv1_ = std::make_unique<Conv2DCPU>(3, 256, 3, 1, 1); // (32,32,3) → (32,32,256)
     relu1_ = std::make_unique<ReLUCPU>();
-    pool1_ = std::make_unique<MaxPoolCPU>(2); // → [batch, 256, 16, 16]
+    pool1_ = std::make_unique<MaxPoolCPU>(2); // → (16,16,256)
 
-    // Conv2: 256 → 128, kernel=3, stride=1, padding=1
-    // Input: [batch, 256, 16, 16] → Output: [batch, 128, 16, 16]
-    conv2_ = std::make_unique<Conv2DCPU>(256, 128, 3, 1, 1);
+    conv2_ = std::make_unique<Conv2DCPU>(256, 128, 3, 1, 1); // (16,16,256) → (16,16,128)
     relu2_ = std::make_unique<ReLUCPU>();
-    pool2_ = std::make_unique<MaxPoolCPU>(2); // → [batch, 128, 8, 8] = LATENT
+    pool2_ = std::make_unique<MaxPoolCPU>(2); // → (8,8,128)
 
-    // ========================
-    // Initialize DECODER layers
-    // ========================
-    // Conv3: 128 → 128, kernel=3, stride=1, padding=1
-    conv3_ = std::make_unique<Conv2DCPU>(128, 128, 3, 1, 1);
+    // Initialize decoder layers
+    conv3_ = std::make_unique<Conv2DCPU>(128, 128, 3, 1, 1); // (8,8,128) → (8,8,128)
     relu3_ = std::make_unique<ReLUCPU>();
-    up1_ = std::make_unique<UpsampleCPU>(2); // → [batch, 128, 16, 16]
+    up1_ = std::make_unique<UpsampleCPU>(2); // → (16,16,128)
 
-    // Conv4: 128 → 256, kernel=3, stride=1, padding=1
-    conv4_ = std::make_unique<Conv2DCPU>(128, 256, 3, 1, 1);
+    conv4_ = std::make_unique<Conv2DCPU>(128, 256, 3, 1, 1); // (16,16,128) → (16,16,256)
     relu4_ = std::make_unique<ReLUCPU>();
-    up2_ = std::make_unique<UpsampleCPU>(2); // → [batch, 256, 32, 32]
+    up2_ = std::make_unique<UpsampleCPU>(2); // → (32,32,256)
 
-    // Conv5: 256 → 3, kernel=3, stride=1, padding=1 (output layer)
-    conv5_ = std::make_unique<Conv2DCPU>(256, 3, 3, 1, 1); // → [batch, 3, 32, 32]
+    conv5_ = std::make_unique<Conv2DCPU>(256, 3, 3, 1, 1); // (32,32,256) → (32,32,3)
 }
 
-AutoencoderCPU::~AutoencoderCPU()
+Tensor AutoencoderCPU::forward(const Tensor &input)
 {
-    free_activations();
-}
-
-// ============================================================================
-// MEMORY MANAGEMENT
-// ============================================================================
-
-void AutoencoderCPU::allocate_activations(int batch)
-{
-    if (batch == cached_batch_ && act_buffer_size_ > 0)
-    {
-        return; // Already allocated for this batch size
-    }
-
-    free_activations();
-    cached_batch_ = batch;
-
-    // Encoder activation sizes
-    size_t size_conv1 = batch * 256 * 32 * 32; // After conv1
-    size_t size_pool1 = batch * 256 * 16 * 16; // After pool1
-    size_t size_conv2 = batch * 128 * 16 * 16; // After conv2
-    size_t size_pool2 = batch * 128 * 8 * 8;   // After pool2 (latent)
-
-    // Decoder activation sizes
-    size_t size_conv3 = batch * 128 * 8 * 8;   // After conv3
-    size_t size_up1 = batch * 128 * 16 * 16;   // After up1
-    size_t size_conv4 = batch * 256 * 16 * 16; // After conv4
-    size_t size_up2 = batch * 256 * 32 * 32;   // After up2
-    size_t size_conv5 = batch * 3 * 32 * 32;   // After conv5 (output)
-
-    // Allocate encoder activations
-    act_conv1_ = new float[size_conv1];
-    act_relu1_ = new float[size_conv1];
-    act_pool1_ = new float[size_pool1];
-    act_conv2_ = new float[size_conv2];
-    act_relu2_ = new float[size_conv2];
-    act_pool2_ = new float[size_pool2];
-
-    // Allocate decoder activations
-    act_conv3_ = new float[size_conv3];
-    act_relu3_ = new float[size_conv3];
-    act_up1_ = new float[size_up1];
-    act_conv4_ = new float[size_conv4];
-    act_relu4_ = new float[size_conv4];
-    act_up2_ = new float[size_up2];
-    act_conv5_ = new float[size_conv5];
-
-    // Gradient buffer (same size as output)
-    grad_buffer_ = new float[size_conv5];
-
-    act_buffer_size_ = size_conv1; // Mark as allocated
-}
-
-void AutoencoderCPU::free_activations()
-{
-    delete[] act_conv1_;
-    act_conv1_ = nullptr;
-    delete[] act_relu1_;
-    act_relu1_ = nullptr;
-    delete[] act_pool1_;
-    act_pool1_ = nullptr;
-    delete[] act_conv2_;
-    act_conv2_ = nullptr;
-    delete[] act_relu2_;
-    act_relu2_ = nullptr;
-    delete[] act_pool2_;
-    act_pool2_ = nullptr;
-
-    delete[] act_conv3_;
-    act_conv3_ = nullptr;
-    delete[] act_relu3_;
-    act_relu3_ = nullptr;
-    delete[] act_up1_;
-    act_up1_ = nullptr;
-    delete[] act_conv4_;
-    act_conv4_ = nullptr;
-    delete[] act_relu4_;
-    act_relu4_ = nullptr;
-    delete[] act_up2_;
-    act_up2_ = nullptr;
-    delete[] act_conv5_;
-    act_conv5_ = nullptr;
-
-    delete[] grad_buffer_;
-    grad_buffer_ = nullptr;
-
-    act_buffer_size_ = 0;
-    cached_batch_ = 0;
-}
-
-// ============================================================================
-// FORWARD PASS
-// ============================================================================
-
-float *AutoencoderCPU::forward(const float *input, int batch)
-{
-    allocate_activations(batch);
-
-    // ========================
     // ENCODER
-    // ========================
-    // Conv1: [batch, 3, 32, 32] → [batch, 256, 32, 32]
-    // Pass act_conv1_ as output buffer - layer writes directly, no copy needed
-    conv1_->forward(input, batch, 32, 32, act_conv1_);
+    auto x = conv1_->forward(input); // (32,32,3) → (32,32,256)
+    x = relu1_->forward(x);
+    x = pool1_->forward(x); // → (16,16,256)
 
-    // ReLU1
-    relu1_->forward(act_conv1_, batch * 256 * 32 * 32, act_relu1_);
+    x = conv2_->forward(x); // → (16,16,128)
+    x = relu2_->forward(x);
+    latent_ = pool2_->forward(x); // → (8,8,128) = 8192 features
 
-    // Pool1: [batch, 256, 32, 32] → [batch, 256, 16, 16]
-    pool1_->forward(act_relu1_, batch, 256, 32, 32, act_pool1_);
-
-    // Conv2: [batch, 256, 16, 16] → [batch, 128, 16, 16]
-    conv2_->forward(act_pool1_, batch, 16, 16, act_conv2_);
-
-    // ReLU2
-    relu2_->forward(act_conv2_, batch * 128 * 16 * 16, act_relu2_);
-
-    // Pool2: [batch, 128, 16, 16] → [batch, 128, 8, 8] = LATENT
-    pool2_->forward(act_relu2_, batch, 128, 16, 16, act_pool2_);
-
-    // ========================
     // DECODER
-    // ========================
-    // Conv3: [batch, 128, 8, 8] → [batch, 128, 8, 8]
-    conv3_->forward(act_pool2_, batch, 8, 8, act_conv3_);
+    x = conv3_->forward(latent_); // (8,8,128) → (8,8,128)
+    x = relu3_->forward(x);
+    x = up1_->forward(x); // → (16,16,128)
 
-    // ReLU3
-    relu3_->forward(act_conv3_, batch * 128 * 8 * 8, act_relu3_);
+    x = conv4_->forward(x); // → (16,16,256)
+    x = relu4_->forward(x);
+    x = up2_->forward(x); // → (32,32,256)
 
-    // Up1: [batch, 128, 8, 8] → [batch, 128, 16, 16]
-    up1_->forward(act_relu3_, batch, 128, 8, 8, act_up1_);
+    output_ = conv5_->forward(x); // → (32,32,3)
 
-    // Conv4: [batch, 128, 16, 16] → [batch, 256, 16, 16]
-    conv4_->forward(act_up1_, batch, 16, 16, act_conv4_);
-
-    // ReLU4
-    relu4_->forward(act_conv4_, batch * 256 * 16 * 16, act_relu4_);
-
-    // Up2: [batch, 256, 16, 16] → [batch, 256, 32, 32]
-    up2_->forward(act_relu4_, batch, 256, 16, 16, act_up2_);
-
-    // Conv5: [batch, 256, 32, 32] → [batch, 3, 32, 32] = OUTPUT
-    conv5_->forward(act_up2_, batch, 32, 32, act_conv5_);
-
-    return act_conv5_;
+    return output_;
 }
 
-// ============================================================================
-// FEATURE EXTRACTION (ENCODER ONLY)
-// ============================================================================
-
-float *AutoencoderCPU::extract_features(const float *input, int batch)
+void AutoencoderCPU::backward(const Tensor &target, float learning_rate)
 {
-    allocate_activations(batch);
+    // Compute gradient of loss w.r.t. output
+    Tensor grad = output_; // Copy
+    float *grad_data = grad.data->data();
+    const float *target_data = target.data->data();
+    size_t size = grad.size();
 
-    // Run encoder only - layers write directly to buffers, no copies
-    conv1_->forward(input, batch, 32, 32, act_conv1_);
-    relu1_->forward(act_conv1_, batch * 256 * 32 * 32, act_relu1_);
-    pool1_->forward(act_relu1_, batch, 256, 32, 32, act_pool1_);
-    conv2_->forward(act_pool1_, batch, 16, 16, act_conv2_);
-    relu2_->forward(act_conv2_, batch * 128 * 16 * 16, act_relu2_);
-    pool2_->forward(act_relu2_, batch, 128, 16, 16, act_pool2_);
-
-    // Result already in act_pool2_, return directly
-    return act_pool2_;
-}
-
-// ============================================================================
-// BACKWARD PASS
-// ============================================================================
-
-void AutoencoderCPU::backward(const float *target, float learning_rate)
-{
-    int batch = cached_batch_;
-    size_t output_size = batch * 3 * 32 * 32;
-
-    // Compute gradient of MSE loss w.r.t. output
-    // MSE gradient: d/dx [(1/N) * sum((x - t)^2)] = (2/N) * (x - t)
-    float scale = 2.0f / output_size;
-    for (size_t i = 0; i < output_size; ++i)
+    // MSE gradient: 2 * (output - target) / N
+    float scale = 2.0f / size;
+    for (size_t i = 0; i < size; ++i)
     {
-        grad_buffer_[i] = scale * (act_conv5_[i] - target[i]);
+        grad_data[i] = scale * (grad_data[i] - target_data[i]);
     }
 
-    // ========================
-    // BACKPROP THROUGH DECODER
-    // ========================
-    // Conv5 backward
-    float *grad = conv5_->backward(grad_buffer_);
-
-    // Up2 backward
+    // Backpropagate through decoder
+    grad = conv5_->backward(grad);
     grad = up2_->backward(grad);
-
-    // ReLU4 backward
     grad = relu4_->backward(grad);
-
-    // Conv4 backward
     grad = conv4_->backward(grad);
-
-    // Up1 backward
     grad = up1_->backward(grad);
-
-    // ReLU3 backward
     grad = relu3_->backward(grad);
-
-    // Conv3 backward
     grad = conv3_->backward(grad);
 
-    // ========================
-    // BACKPROP THROUGH ENCODER
-    // ========================
-    // Pool2 backward
+    // Backpropagate through encoder
     grad = pool2_->backward(grad);
-
-    // ReLU2 backward
     grad = relu2_->backward(grad);
-
-    // Conv2 backward
     grad = conv2_->backward(grad);
-
-    // Pool1 backward
     grad = pool1_->backward(grad);
-
-    // ReLU1 backward
     grad = relu1_->backward(grad);
-
-    // Conv1 backward
     grad = conv1_->backward(grad);
 
-    // ========================
-    // UPDATE WEIGHTS (SGD)
-    // ========================
+    // Update weights
     conv1_->update_weights(learning_rate);
     conv2_->update_weights(learning_rate);
     conv3_->update_weights(learning_rate);
@@ -283,26 +90,37 @@ void AutoencoderCPU::backward(const float *target, float learning_rate)
     conv5_->update_weights(learning_rate);
 }
 
-// ============================================================================
-// LOSS COMPUTATION
-// ============================================================================
-
-float AutoencoderCPU::compute_loss(const float *output, const float *target, size_t size)
+Tensor AutoencoderCPU::extract_features(const Tensor &input)
 {
+    // Run only the encoder path
+    auto x = conv1_->forward(input);
+    x = relu1_->forward(x);
+    x = pool1_->forward(x);
+
+    x = conv2_->forward(x);
+    x = relu2_->forward(x);
+    x = pool2_->forward(x); // Returns (8,8,128) = 8192 features
+
+    return x;
+}
+
+float AutoencoderCPU::compute_loss(const Tensor &output, const Tensor &target)
+{
+    // Mean Squared Error (MSE) loss
+    const float *out_data = output.data->data();
+    const float *target_data = target.data->data();
+    size_t size = output.size();
+
     double sum_squared_error = 0.0;
 
     for (size_t i = 0; i < size; ++i)
     {
-        float diff = output[i] - target[i];
+        float diff = out_data[i] - target_data[i];
         sum_squared_error += diff * diff;
     }
 
     return static_cast<float>(sum_squared_error / size);
 }
-
-// ============================================================================
-// WEIGHT PERSISTENCE
-// ============================================================================
 
 void AutoencoderCPU::save_weights(const std::string &filename)
 {
@@ -312,15 +130,15 @@ void AutoencoderCPU::save_weights(const std::string &filename)
         throw std::runtime_error("Failed to open file for writing: " + filename);
     }
 
-    // Helper lambda to save a conv layer's weights
-    auto save_conv = [&file](Conv2DCPU *layer)
+    // Helper lambda to save layer weights
+    auto save_conv_layer = [&file](Conv2DCPU *layer)
     {
-        int w_size = layer->get_weight_size();
-        int b_size = layer->get_bias_size();
+        std::vector<float> weights, bias;
+        layer->get_weights(weights, bias);
 
-        std::vector<float> weights(w_size);
-        std::vector<float> bias(b_size);
-        layer->get_weights(weights.data(), bias.data());
+        // Write size headers then data
+        int w_size = weights.size();
+        int b_size = bias.size();
 
         file.write(reinterpret_cast<const char *>(&w_size), sizeof(int));
         file.write(reinterpret_cast<const char *>(&b_size), sizeof(int));
@@ -328,12 +146,12 @@ void AutoencoderCPU::save_weights(const std::string &filename)
         file.write(reinterpret_cast<const char *>(bias.data()), b_size * sizeof(float));
     };
 
-    // Save all 5 convolutional layers
-    save_conv(conv1_.get());
-    save_conv(conv2_.get());
-    save_conv(conv3_.get());
-    save_conv(conv4_.get());
-    save_conv(conv5_.get());
+    // Save all convolutional layers
+    save_conv_layer(conv1_.get());
+    save_conv_layer(conv2_.get());
+    save_conv_layer(conv3_.get());
+    save_conv_layer(conv4_.get());
+    save_conv_layer(conv5_.get());
 
     file.close();
 }
@@ -346,17 +164,12 @@ void AutoencoderCPU::load_weights(const std::string &filename)
         throw std::runtime_error("Failed to open file for reading: " + filename);
     }
 
-    // Helper lambda to load a conv layer's weights
-    auto load_conv = [&file](Conv2DCPU *layer)
+    // Helper lambda to load layer weights
+    auto load_conv_layer = [&file](Conv2DCPU *layer)
     {
         int w_size, b_size;
         file.read(reinterpret_cast<char *>(&w_size), sizeof(int));
         file.read(reinterpret_cast<char *>(&b_size), sizeof(int));
-
-        if (w_size != layer->get_weight_size() || b_size != layer->get_bias_size())
-        {
-            throw std::runtime_error("Weight size mismatch when loading weights");
-        }
 
         std::vector<float> weights(w_size);
         std::vector<float> bias(b_size);
@@ -364,15 +177,15 @@ void AutoencoderCPU::load_weights(const std::string &filename)
         file.read(reinterpret_cast<char *>(weights.data()), w_size * sizeof(float));
         file.read(reinterpret_cast<char *>(bias.data()), b_size * sizeof(float));
 
-        layer->set_weights(weights.data(), bias.data());
+        layer->set_weight(weights, bias);
     };
 
-    // Load all 5 convolutional layers
-    load_conv(conv1_.get());
-    load_conv(conv2_.get());
-    load_conv(conv3_.get());
-    load_conv(conv4_.get());
-    load_conv(conv5_.get());
+    // Load all convolutional layers
+    load_conv_layer(conv1_.get());
+    load_conv_layer(conv2_.get());
+    load_conv_layer(conv3_.get());
+    load_conv_layer(conv4_.get());
+    load_conv_layer(conv5_.get());
 
     file.close();
 }

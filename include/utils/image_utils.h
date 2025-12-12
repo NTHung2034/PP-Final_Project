@@ -1,4 +1,5 @@
 #pragma once
+#include "data/data_types.h"
 #include <string>
 #include <vector>
 
@@ -6,14 +7,10 @@ namespace ImageUtils
 {
 
     // Save a batch of images as PPM files (original vs reconstructed)
-
+    // Creates side-by-side comparison images
     void save_reconstruction_samples(
-        const float *original,
-        const float *reconstructed,
-        int batch_size,
-        int channels,
-        int height,
-        int width,
+        const Tensor &original,
+        const Tensor &reconstructed,
         const std::string &output_dir,
         const std::string &prefix,
         int num_samples = 8);

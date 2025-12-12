@@ -106,13 +106,17 @@ namespace ImageUtils
         file.close();
     }
 
-    void save_reconstruction_samples(const float *original, const float *reconstructed,
-                                     int batch_size, int channels, int height, int width,
+    void save_reconstruction_samples(const Tensor &original, const Tensor &reconstructed,
                                      const std::string &output_dir, const std::string &prefix,
                                      int num_samples)
     {
         // Create output directory if it doesn't exist
         mkdir(output_dir.c_str(), 0755);
+
+        int batch_size = original.batch();
+        int channels = original.channels();
+        int height = original.height();
+        int width = original.width();
 
         num_samples = std::min(num_samples, batch_size);
 
@@ -123,8 +127,8 @@ namespace ImageUtils
             // Calculate offset for this image in the batch
             int image_offset = i * channels * height * width;
 
-            const float *orig_ptr = original + image_offset;
-            const float *recon_ptr = reconstructed + image_offset;
+            const float *orig_ptr = original.raw_data() + image_offset;
+            const float *recon_ptr = reconstructed.raw_data() + image_offset;
 
             // Save comparison image
             std::string filepath = output_dir + "/" + prefix + "_sample_" + std::to_string(i) + ".ppm";

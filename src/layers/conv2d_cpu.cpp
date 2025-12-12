@@ -1,12 +1,9 @@
 #include "layers/conv2d_cpu.h"
 #include <cstring>
 #include <random>
-#include <stdexcept>
-#include <cmath>
-#include <algorithm>
 
-Conv2DCPU::Conv2DCPU(int in_channels, int out_channels, int kernel_size, int stride, int padding)
-    : in_c_(in_channels), out_c_(out_channels), k_size_(kernel_size), stride_(stride), pad_(padding)
+Conv2DCPU::Conv2DCPU(int in_channels_num, int out_channels_num, int kernel_size, int stride, int padding)
+    : in_c_(in_channels_num), out_c_(out_channels_num), k_size_(kernel_size), stride_(stride), pad_(padding)
 {
     // Initialize weights and biases with Xavier/He initialization
     int weight_size = out_c_ * in_c_ * k_size_ * k_size_;
@@ -30,47 +27,22 @@ Conv2DCPU::Conv2DCPU(int in_channels, int out_channels, int kernel_size, int str
     std::fill(bias_.begin(), bias_.end(), 0.0f);
 }
 
-Conv2DCPU::~Conv2DCPU()
+Tensor Conv2DCPU::forward(const Tensor &input)
 {
-    delete[] cached_input_;
-    delete[] output_buffer_;
-    delete[] grad_input_buffer_;
-}
+    cached_input_ = input;
 
-float *Conv2DCPU::forward(const float *input, int batch, int in_h, int in_w, float *output)
-{
-    // Cache input for backward pass
-    cached_batch_ = batch;
-    cached_in_h_ = in_h;
-    cached_in_w_ = in_w;
+    int batch = input.batch();
+    int in_h = input.height();
+    int in_w = input.width();
 
-    size_t input_size = static_cast<size_t>(batch) * in_c_ * in_h * in_w;
-    if (input_size > cached_input_size_)
-    {
-        delete[] cached_input_;
-        cached_input_ = new float[input_size];
-        cached_input_size_ = input_size;
-    }
-    std::memcpy(cached_input_, input, input_size * sizeof(float));
+    int out_h = (in_h + 2 * pad_ - k_size_) / stride_ + 1;
+    int out_w = (in_w + 2 * pad_ - k_size_) / stride_ + 1;
 
-    // Calculate output dimensions
-    int out_h = get_output_height(in_h);
-    int out_w = get_output_width(in_w);
+    Tensor output({batch, out_c_, out_h, out_w});
 
-    size_t output_size = static_cast<size_t>(batch) * out_c_ * out_h * out_w;
+    float *out_data = output.data->data();
+    const float *in_data = input.data->data();
 
-    // Only allocate output buffer if we need internal storage
-    if (output == nullptr && output_size > output_buffer_size_)
-    {
-        delete[] output_buffer_;
-        output_buffer_ = new float[output_size];
-        output_buffer_size_ = output_size;
-    }
-
-    // Use provided buffer or internal buffer
-    float *out_ptr = (output != nullptr) ? output : output_buffer_;
-
-    // Perform convolution
     for (int n = 0; n < batch; ++n)
     {
         for (int oc = 0; oc < out_c_; ++oc)
@@ -81,6 +53,7 @@ float *Conv2DCPU::forward(const float *input, int batch, int in_h, int in_w, flo
                 {
                     float sum = bias_[oc];
 
+                    // Convolution operation
                     for (int ic = 0; ic < in_c_; ++ic)
                     {
                         for (int kh = 0; kh < k_size_; ++kh)
@@ -90,47 +63,45 @@ float *Conv2DCPU::forward(const float *input, int batch, int in_h, int in_w, flo
                                 int ih = oh * stride_ - pad_ + kh;
                                 int iw = ow * stride_ - pad_ + kw;
 
+                                // Handle padding
                                 if (ih >= 0 && ih < in_h && iw >= 0 && iw < in_w)
                                 {
                                     int in_idx = ((n * in_c_ + ic) * in_h + ih) * in_w + iw;
                                     int w_idx = ((oc * in_c_ + ic) * k_size_ + kh) * k_size_ + kw;
-                                    sum += input[in_idx] * weights_[w_idx];
+                                    sum += in_data[in_idx] * weights_[w_idx];
                                 }
                             }
                         }
                     }
 
                     int out_idx = ((n * out_c_ + oc) * out_h + oh) * out_w + ow;
-                    out_ptr[out_idx] = sum;
+                    out_data[out_idx] = sum;
                 }
             }
         }
     }
 
-    return out_ptr;
+    return output;
 }
 
-float *Conv2DCPU::backward(const float *grad_output)
+Tensor Conv2DCPU::backward(const Tensor &grad_output)
 {
-    int batch = cached_batch_;
-    int in_h = cached_in_h_;
-    int in_w = cached_in_w_;
-    int out_h = get_output_height(in_h);
-    int out_w = get_output_width(in_w);
-
-    // Allocate gradient input buffer
-    size_t grad_input_size = static_cast<size_t>(batch) * in_c_ * in_h * in_w;
-    if (grad_input_size > grad_input_buffer_size_)
-    {
-        delete[] grad_input_buffer_;
-        grad_input_buffer_ = new float[grad_input_size];
-        grad_input_buffer_size_ = grad_input_size;
-    }
+    // Initialize gradient tensors
+    Tensor grad_input(cached_input_.shape);
+    float *grad_in_data = grad_input.data->data();
+    const float *grad_out_data = grad_output.data->data();
+    const float *in_data = cached_input_.data->data();
 
     // Zero initialize gradients
-    std::memset(grad_input_buffer_, 0, grad_input_size * sizeof(float));
+    std::memset(grad_in_data, 0, grad_input.size() * sizeof(float));
     std::memset(grad_w_.data(), 0, grad_w_.size() * sizeof(float));
     std::memset(grad_b_.data(), 0, grad_b_.size() * sizeof(float));
+
+    int batch = cached_input_.batch();
+    int in_h = cached_input_.height();
+    int in_w = cached_input_.width();
+    int out_h = grad_output.height();
+    int out_w = grad_output.width();
 
     // Compute gradients
     for (int n = 0; n < batch; ++n)
@@ -142,9 +113,10 @@ float *Conv2DCPU::backward(const float *grad_output)
                 for (int ow = 0; ow < out_w; ++ow)
                 {
                     int out_idx = ((n * out_c_ + oc) * out_h + oh) * out_w + ow;
-                    float grad_out = grad_output[out_idx];
+                    float grad_out = grad_out_data[out_idx];
                     grad_b_[oc] += grad_out;
 
+                    // Gradient w.r.t. weights and input
                     for (int ic = 0; ic < in_c_; ++ic)
                     {
                         for (int kh = 0; kh < k_size_; ++kh)
@@ -159,8 +131,8 @@ float *Conv2DCPU::backward(const float *grad_output)
                                     int in_idx = ((n * in_c_ + ic) * in_h + ih) * in_w + iw;
                                     int w_idx = ((oc * in_c_ + ic) * k_size_ + kh) * k_size_ + kw;
 
-                                    grad_w_[w_idx] += grad_out * cached_input_[in_idx];
-                                    grad_input_buffer_[in_idx] += grad_out * weights_[w_idx];
+                                    grad_w_[w_idx] += grad_out * in_data[in_idx];
+                                    grad_in_data[in_idx] += grad_out * weights_[w_idx];
                                 }
                             }
                         }
@@ -170,33 +142,43 @@ float *Conv2DCPU::backward(const float *grad_output)
         }
     }
 
-    return grad_input_buffer_;
+    return grad_input;
 }
 
-void Conv2DCPU::set_weights(const float *weights, const float *bias)
+void Conv2DCPU::set_weight(const std::vector<float> &weights, const std::vector<float> &bias)
 {
-    std::memcpy(weights_.data(), weights, weights_.size() * sizeof(float));
-    std::memcpy(bias_.data(), bias, bias_.size() * sizeof(float));
+    if (weights.size() != weights_.size())
+    {
+        throw std::runtime_error("Weight size mismatch");
+    }
+    if (bias.size() != bias_.size())
+    {
+        throw std::runtime_error("Bias size mismatch");
+    }
+    weights_ = weights;
+    bias_ = bias;
 }
 
-void Conv2DCPU::get_weights(float *weights, float *bias) const
+void Conv2DCPU::get_weights(std::vector<float> &weights, std::vector<float> &bias) const
 {
-    std::memcpy(weights, weights_.data(), weights_.size() * sizeof(float));
-    std::memcpy(bias, bias_.data(), bias_.size() * sizeof(float));
+    weights = weights_;
+    bias = bias_;
 }
 
-void Conv2DCPU::get_gradients(float *grad_w, float *grad_b) const
+void Conv2DCPU::get_gradients(std::vector<float> &grad_w, std::vector<float> &grad_b)
 {
-    std::memcpy(grad_w, grad_w_.data(), grad_w_.size() * sizeof(float));
-    std::memcpy(grad_b, grad_b_.data(), grad_b_.size() * sizeof(float));
+    grad_w = grad_w_;
+    grad_b = grad_b_;
 }
 
 void Conv2DCPU::update_weights(float learning_rate)
 {
+    // SGD update: weight -= learning_rate * gradient
     for (size_t i = 0; i < weights_.size(); ++i)
     {
         weights_[i] -= learning_rate * grad_w_[i];
     }
+
     for (size_t i = 0; i < bias_.size(); ++i)
     {
         bias_[i] -= learning_rate * grad_b_[i];
