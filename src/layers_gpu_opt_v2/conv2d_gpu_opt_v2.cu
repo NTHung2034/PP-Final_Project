@@ -1,14 +1,12 @@
 #include "layers_gpu_opt_v2/conv2d_gpu_opt_v2.cuh"
 
-// Constant memory for biases
-__constant__ float c_bias_v2[256];
-
 // =============================================================================
 // FUSED TILED CONVOLUTION FORWARD - Conv + Bias + ReLU in single kernel
 // =============================================================================
 __global__ void conv2d_forward_fused_kernel(
     const float* __restrict__ input,
     const float* __restrict__ weights,
+    const float* __restrict__ bias,
     float* __restrict__ output,
     int N, int C_in, int H_in, int W_in,
     int C_out, int H_out, int W_out,
@@ -57,7 +55,7 @@ __global__ void conv2d_forward_fused_kernel(
     
     // Fused: Add bias + optional ReLU + write output
     if (h_out < H_out && w_out < W_out && n < N && c_out < C_out) {
-        sum += c_bias_v2[c_out];
+        sum += bias[c_out];
         output[n * (C_out * H_out * W_out) + c_out * (H_out * W_out) + h_out * W_out + w_out] =
             (apply_relu && sum < 0.0f) ? 0.0f : sum;
     }
@@ -68,15 +66,13 @@ void conv2d_forward_opt_v2(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
     int N = input.batch, C_in = input.channels, H_in = input.height, W_in = input.width;
     int C_out = weights.out_c, H_out = output.height, W_out = output.width;
     
-    CUDA_CHECK(cudaMemcpyToSymbol(c_bias_v2, weights.d_bias, weights.bias_size * sizeof(float)));
-    
     int tiles_w = (W_out + TILE_W_V2 - 1) / TILE_W_V2;
     int tiles_h = (H_out + TILE_H_V2 - 1) / TILE_H_V2;
     dim3 grid(tiles_h * tiles_w, C_out, N);
     dim3 block(TILE_W_V2, TILE_H_V2);
     
     conv2d_forward_fused_kernel<<<grid, block, 0, stream>>>(
-        input.d_data, weights.d_weights, output.d_data,
+        input.d_data, weights.d_weights, weights.d_bias, output.d_data,
         N, C_in, H_in, W_in, C_out, H_out, W_out, apply_relu);
     CUDA_CHECK(cudaGetLastError());
 }

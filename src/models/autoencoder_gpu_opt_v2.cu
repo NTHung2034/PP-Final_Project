@@ -30,7 +30,7 @@ void AutoencoderGPUOptV2::async_load_input(const float* h_input, int batch_size)
     pool.async_input_transfer(input_buffer.d_data, h_input, batch_size * 3 * 32 * 32 * sizeof(float));
 }
 
-float AutoencoderGPUOptV2::forward_stream() {
+void AutoencoderGPUOptV2::forward_stream() {
     cudaStream_t s = pool.compute_stream;
     pool.sync_before_compute();
     
@@ -47,7 +47,8 @@ float AutoencoderGPUOptV2::forward_stream() {
     upsample2d_forward_opt_v2(pool.act7, pool.act8, s);
     conv2d_forward_opt_v2(pool.act8, *conv5, pool.output, false, s);
     
-    return mse_loss_forward_opt_v2(pool.output, input_buffer, s);
+    // Accumulate loss (no sync)
+    mse_loss_forward_opt_v2(pool.output, input_buffer, pool.d_loss, s);
 }
 
 void AutoencoderGPUOptV2::backward_stream(float learning_rate) {
@@ -84,7 +85,10 @@ float AutoencoderGPUOptV2::forward(const float* h_input, int batch_size) {
     upsample2d_forward_opt_v2(pool.act7, pool.act8);
     conv2d_forward_opt_v2(pool.act8, *conv5, pool.output, false);
     
-    return mse_loss_forward_opt_v2(pool.output, input_buffer);
+    // For non-stream version, sync and get loss immediately
+    pool.reset_loss();
+    mse_loss_forward_opt_v2(pool.output, input_buffer, pool.d_loss);
+    return pool.get_loss(1);
 }
 
 void AutoencoderGPUOptV2::backward(float learning_rate) {

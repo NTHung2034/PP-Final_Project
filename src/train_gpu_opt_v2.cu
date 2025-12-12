@@ -144,7 +144,8 @@ void train_autoencoder_gpu_opt_v2(
         
         loader.shuffle();
         
-        float epoch_loss = 0.0f;
+        // Reset loss accumulator at epoch start
+        model.reset_epoch_loss();
         int batches_processed = 0;
         
         // Batch loop with multi-stream pipeline
@@ -153,29 +154,27 @@ void train_autoencoder_gpu_opt_v2(
             float* batch_data = loader.get_batch(batch_size);
             if (!batch_data) break;
             
-            // Async load + compute pipeline
+            // Async load + compute pipeline (loss accumulated on GPU)
             model.async_load_input(batch_data, batch_size);
-            float batch_loss = model.forward_stream();
+            model.forward_stream();
             model.backward_stream(learning_rate);
             
-            epoch_loss += batch_loss;
             batches_processed++;
             
-            // Display progress
-            if ((batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1) {
-                float avg_loss = epoch_loss / batches_processed;
+            // Display progress (less frequently since we don't have per-batch loss)
+            if ((batch_idx + 1) % 50 == 0 || batch_idx == num_batches - 1) {
                 std::cout << "\r  Epoch [" << std::setw(3) << (epoch + 1) << "/" << epochs << "] "
                           << "Batch [" << std::setw(4) << (batch_idx + 1) << "/" << num_batches << "] "
-                          << "Loss: " << std::fixed << std::setprecision(6) << avg_loss
+                          << "Processing..."
                           << std::flush;
             }
         }
         
-        // Sync at end of epoch
+        // Sync and get accumulated loss at end of epoch
         CUDA_CHECK(cudaStreamSynchronize(model.get_compute_stream()));
         
         float epoch_time = gpu_timer.stop();
-        float avg_epoch_loss = epoch_loss / batches_processed;
+        float avg_epoch_loss = model.get_epoch_loss(batches_processed);
         
         stats.add_epoch(avg_epoch_loss, epoch_time);
         stats.print_epoch_summary(epoch + 1, avg_epoch_loss, epoch_time, epochs);

@@ -11,6 +11,9 @@ struct GPUMemoryPoolV2 {
     int* pool1_idx = nullptr;
     int* pool2_idx = nullptr;
     
+    // V2: Pre-allocated loss buffer (avoids cudaMalloc per batch)
+    float* d_loss = nullptr;
+    
     // V2: Multi-stream pipeline
     cudaStream_t compute_stream = nullptr;
     cudaStream_t transfer_stream = nullptr;
@@ -60,6 +63,9 @@ struct GPUMemoryPoolV2 {
         CUDA_CHECK(cudaMalloc(&pool1_idx, bs * 256 * 16 * 16 * sizeof(int)));
         CUDA_CHECK(cudaMalloc(&pool2_idx, bs * 128 * 8 * 8 * sizeof(int)));
         
+        // Pre-allocated loss buffer
+        CUDA_CHECK(cudaMalloc(&d_loss, sizeof(float)));
+        
         init_streams();
         allocated = true;
     }
@@ -82,6 +88,7 @@ struct GPUMemoryPoolV2 {
         grad4.free(); grad3.free(); grad2.free(); grad1.free(); grad_in.free();
         if (pool1_idx) { cudaFree(pool1_idx); pool1_idx = nullptr; }
         if (pool2_idx) { cudaFree(pool2_idx); pool2_idx = nullptr; }
+        if (d_loss) { cudaFree(d_loss); d_loss = nullptr; }
         allocated = false;
     }
 
@@ -94,6 +101,19 @@ struct GPUMemoryPoolV2 {
     // Make compute_stream wait for transfer to complete
     void sync_before_compute() {
         CUDA_CHECK(cudaStreamWaitEvent(compute_stream, transfer_done, 0));
+    }
+    
+    // Reset loss accumulator at epoch start
+    void reset_loss() {
+        CUDA_CHECK(cudaMemsetAsync(d_loss, 0, sizeof(float), compute_stream));
+    }
+    
+    // Get accumulated loss (syncs stream)
+    float get_loss(int num_batches) {
+        float loss;
+        CUDA_CHECK(cudaStreamSynchronize(compute_stream));
+        CUDA_CHECK(cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost));
+        return loss / num_batches;
     }
 
     ~GPUMemoryPoolV2() { free(); }

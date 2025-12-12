@@ -30,9 +30,13 @@ public:
     // Async input transfer (for pipeline)
     void async_load_input(const float* h_input, int batch_size);
     
-    // Forward/backward using streams (for pipeline)
-    float forward_stream();
+    // Forward/backward using streams (for pipeline) - no sync
+    void forward_stream();
     void backward_stream(float learning_rate);
+    
+    // Epoch-level loss management
+    void reset_epoch_loss() { pool.reset_loss(); }
+    float get_epoch_loss(int num_batches) { return pool.get_loss(num_batches); }
     
     void update_weights(float learning_rate);
     void save_weights(const std::string& dir);

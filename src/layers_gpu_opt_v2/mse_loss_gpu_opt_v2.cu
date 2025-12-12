@@ -21,7 +21,7 @@ __global__ void mse_loss_forward_kernel_v2(
         __syncthreads();
     }
     
-    if (tid == 0) atomicAdd(total_loss, shared[0]);
+    if (tid == 0) atomicAdd(total_loss, shared[0] / size);
 }
 
 __global__ void mse_loss_backward_kernel_v2(
@@ -32,19 +32,11 @@ __global__ void mse_loss_backward_kernel_v2(
     if (idx < size) grad[idx] = scale * (pred[idx] - target[idx]);
 }
 
-float mse_loss_forward_opt_v2(const GPUTensorOpt& prediction, const GPUTensorOpt& target, cudaStream_t stream) {
-    float* d_loss;
-    CUDA_CHECK(cudaMalloc(&d_loss, sizeof(float)));
-    CUDA_CHECK(cudaMemsetAsync(d_loss, 0, sizeof(float), stream));
-    
+void mse_loss_forward_opt_v2(const GPUTensorOpt& prediction, const GPUTensorOpt& target,
+                              float* d_loss, cudaStream_t stream) {
     mse_loss_forward_kernel_v2<<<(prediction.size + 255) / 256, 256, 0, stream>>>(
         prediction.d_data, target.d_data, d_loss, prediction.size);
-    
-    float loss;
-    CUDA_CHECK(cudaMemcpyAsync(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaStreamSynchronize(stream));
-    CUDA_CHECK(cudaFree(d_loss));
-    return loss / prediction.size;
+    CUDA_CHECK(cudaGetLastError());
 }
 
 void mse_loss_backward_opt_v2(const GPUTensorOpt& prediction, const GPUTensorOpt& target,
