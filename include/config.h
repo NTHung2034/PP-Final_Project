@@ -6,6 +6,8 @@
 #define TEST_BATCH_FILE         "test_batch.bin"
 #define MODEL_SAVE_DIR          PROJECT_ROOT_DIR "/models/saved_weights"
 #define MODEL_SAVE_DIR_GPU_NAIVE      PROJECT_ROOT_DIR "/models/saved_weights_gpu_naive"
+#define MODEL_SAVE_DIR_GPU_OPT_V1     PROJECT_ROOT_DIR "/models/saved_weights_gpu_opt_v1"
+#define MODEL_SAVE_DIR_GPU_OPT_V2     PROJECT_ROOT_DIR "/models/saved_weights_gpu_opt_v2"
 #define MODEL_SAVE_DIR_GPU_OPTIMIZED  PROJECT_ROOT_DIR "/models/saved_weights_gpu_optimized"
 
 // Dataset Constants

@@ -2,6 +2,20 @@
 """
 cudaML SVM Training Script
 Trains SVM classifier on extracted features using GPU-accelerated cudaML library
+
+Usage:
+    python cuml_svm_train.py [implementation]
+    
+Arguments:
+    implementation: Choose GPU implementation version (default: naive)
+                   - naive:  Basic GPU implementation
+                   - opt_v1: First optimization version
+                   - opt_v2: Second optimization version
+
+Examples:
+    python cuml_svm_train.py naive
+    python cuml_svm_train.py opt_v1
+    python cuml_svm_train.py opt_v2
 """
 
 import numpy as np
@@ -52,13 +66,29 @@ def get_per_class_accuracy(cm, class_names):
     return result
 
 def main():
-    # Configuration
-    base_dir = "../../models/saved_weights_gpu_naive/svm_features"
+    # Configuration - determine implementation version
+    impl_version = "naive"  # default
     if len(sys.argv) > 1:
-        base_dir = sys.argv[1]
+        impl_version = sys.argv[1].lower()
+    
+    # Validate implementation version
+    valid_versions = ["naive", "opt_v1", "opt_v2"]
+    if impl_version not in valid_versions:
+        print(f"Error: Invalid implementation version '{impl_version}'")
+        print(f"Valid options: {', '.join(valid_versions)}")
+        return 1
+    
+    # Set base directory based on implementation version
+    version_dir_map = {
+        "naive": "saved_weights_gpu_naive",
+        "opt_v1": "saved_weights_gpu_opt_v1",
+        "opt_v2": "saved_weights_gpu_opt_v2"
+    }
+    
+    base_dir = f"../../models/{version_dir_map[impl_version]}/svm_features"
     
     print("\n" + "="*70)
-    print("CIFAR-10 cudaML SVM Training with RBF Kernel")
+    print(f"CIFAR-10 cudaML SVM Training with RBF Kernel [{impl_version.upper()}]")
     print("="*70 + "\n")
     
     class_names = [
@@ -72,6 +102,7 @@ def main():
     kernel = 'rbf'
     
     print(f"Configuration:")
+    print(f"  Implementation: {impl_version.upper()}")
     print(f"  Data directory: {base_dir}")
     print(f"  Kernel: {kernel}")
     print(f"  C: {C}")
@@ -206,6 +237,7 @@ def main():
     summary_text += "TRAINING SUMMARY\n"
     summary_text += "="*70 + "\n"
     summary_text += f"Configuration:\n"
+    summary_text += f"  Implementation: {impl_version.upper()}\n"
     summary_text += f"  Kernel: {kernel}\n"
     summary_text += f"  C: {C}\n"
     summary_text += f"  Gamma: {gamma}\n\n"
