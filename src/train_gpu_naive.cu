@@ -82,10 +82,7 @@ public:
     }
     
     void save_to_file(const std::string& filepath) {
-        std::ofstream out(filepath);        cd build
-        cmake ..
-        make train_gpu_opt_v2
-        ./train_gpu_opt_v2
+        std::ofstream out(filepath);
         if (!out) {
             std::cerr << "Warning: Could not save training summary to " << filepath << std::endl;
             return;

@@ -236,6 +236,7 @@ if(CUDA_AVAILABLE)
     # -------------------------------------------------------------------------
     set(GPU_LAYER_SOURCES_OPT_V2
         src/layers_gpu_opt_v2/conv2d_gpu_opt_v2.cu
+        src/layers_gpu_opt_v2/relu_gpu_opt_v2.cu
         src/layers_gpu_opt_v2/maxpool_gpu_opt_v2.cu
         src/layers_gpu_opt_v2/upsample_gpu_opt_v2.cu
         src/layers_gpu_opt_v2/mse_loss_gpu_opt_v2.cu
