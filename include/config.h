@@ -17,7 +17,7 @@ constexpr int CIFAR_TEST_IMAGES = 10000;
 constexpr int CIFAR_CLASSES = 10;
 
 // Training Configuration
-constexpr int BATCH_SIZE = 32;
+constexpr int BATCH_SIZE = 64;
 constexpr int EPOCHS = 20;
 constexpr float LEARNING_RATE = 0.001f;
 
