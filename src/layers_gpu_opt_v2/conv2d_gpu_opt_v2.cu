@@ -78,16 +78,14 @@ void conv2d_forward_opt_v2(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
 }
 
 // =============================================================================
-// FUSED BACKWARD - Gradient computation with ReLU mask applied
+// BACKWARD - Gradient computation (ReLU handled separately for efficiency)
 // =============================================================================
-__global__ void conv2d_backward_input_fused_kernel(
+__global__ void conv2d_backward_input_kernel_v2(
     const float* __restrict__ grad_output,
     const float* __restrict__ weights,
-    const float* __restrict__ fwd_output,  // For ReLU mask
     float* __restrict__ grad_input,
     int N, int C_in, int H_in, int W_in,
-    int C_out, int H_out, int W_out,
-    bool had_relu)
+    int C_out, int H_out, int W_out)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total = N * C_in * H_in * W_in;
@@ -108,10 +106,7 @@ __global__ void conv2d_backward_input_fused_kernel(
                 int h_out = h_in + 1 - kh, w_out = w_in + 1 - kw;
                 if (h_out >= 0 && h_out < H_out && w_out >= 0 && w_out < W_out) {
                     int go_idx = n * (C_out * H_out * W_out) + c_out * (H_out * W_out) + h_out * W_out + w_out;
-                    float go = grad_output[go_idx];
-                    // Fused ReLU backward: mask gradient if forward output was <= 0
-                    if (had_relu && fwd_output && fwd_output[go_idx] <= 0.0f) go = 0.0f;
-                    grad += go * weights[c_out * (C_in * 9) + c_in * 9 + kh * 3 + kw];
+                    grad += grad_output[go_idx] * weights[c_out * (C_in * 9) + c_in * 9 + kh * 3 + kw];
                 }
             }
         }
@@ -122,11 +117,9 @@ __global__ void conv2d_backward_input_fused_kernel(
 __global__ void conv2d_backward_weights_kernel_v2(
     const float* __restrict__ input,
     const float* __restrict__ grad_output,
-    const float* __restrict__ fwd_output,
     float* __restrict__ grad_weights,
     int N, int C_in, int H_in, int W_in,
-    int C_out, int H_out, int W_out,
-    bool had_relu)
+    int C_out, int H_out, int W_out)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total = C_out * C_in * 9;
@@ -144,9 +137,7 @@ __global__ void conv2d_backward_weights_kernel_v2(
                 int h_in = h_out - 1 + kh, w_in = w_out - 1 + kw;
                 if (h_in >= 0 && h_in < H_in && w_in >= 0 && w_in < W_in) {
                     int go_idx = n * (C_out * H_out * W_out) + c_out * (H_out * W_out) + h_out * W_out + w_out;
-                    float go = grad_output[go_idx];
-                    if (had_relu && fwd_output && fwd_output[go_idx] <= 0.0f) go = 0.0f;
-                    grad += go * input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_in * W_in + w_in];
+                    grad += grad_output[go_idx] * input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_in * W_in + w_in];
                 }
             }
         }
@@ -156,10 +147,8 @@ __global__ void conv2d_backward_weights_kernel_v2(
 
 __global__ void conv2d_backward_bias_kernel_v2(
     const float* __restrict__ grad_output,
-    const float* __restrict__ fwd_output,
     float* __restrict__ grad_bias,
-    int N, int C_out, int H_out, int W_out,
-    bool had_relu)
+    int N, int C_out, int H_out, int W_out)
 {
     int c = blockIdx.x * blockDim.x + threadIdx.x;
     if (c >= C_out) return;
@@ -169,9 +158,7 @@ __global__ void conv2d_backward_bias_kernel_v2(
         for (int h = 0; h < H_out; h++) {
             for (int w = 0; w < W_out; w++) {
                 int idx = n * (C_out * H_out * W_out) + c * (H_out * W_out) + h * W_out + w;
-                float go = grad_output[idx];
-                if (had_relu && fwd_output && fwd_output[idx] <= 0.0f) go = 0.0f;
-                grad += go;
+                grad += grad_output[idx];
             }
         }
     }
@@ -181,23 +168,23 @@ __global__ void conv2d_backward_bias_kernel_v2(
 void conv2d_backward_opt_v2(const GPUTensorOpt& input, const GPUTensorOpt& grad_output,
                             GPUConvWeightsOpt& weights, GPUTensorOpt& grad_input,
                             const GPUTensorOpt* forward_output, cudaStream_t stream) {
+    (void)forward_output; // No longer used - ReLU handled separately
+    
     int N = input.batch, C_in = input.channels, H_in = input.height, W_in = input.width;
     int C_out = weights.out_c, H_out = grad_output.height, W_out = grad_output.width;
-    bool had_relu = (forward_output != nullptr);
-    const float* fwd_ptr = had_relu ? forward_output->d_data : nullptr;
     
     int total_in = N * C_in * H_in * W_in;
-    conv2d_backward_input_fused_kernel<<<(total_in + 255) / 256, 256, 0, stream>>>(
-        grad_output.d_data, weights.d_weights, fwd_ptr, grad_input.d_data,
-        N, C_in, H_in, W_in, C_out, H_out, W_out, had_relu);
+    conv2d_backward_input_kernel_v2<<<(total_in + 255) / 256, 256, 0, stream>>>(
+        grad_output.d_data, weights.d_weights, grad_input.d_data,
+        N, C_in, H_in, W_in, C_out, H_out, W_out);
     
     int total_w = C_out * C_in * 9;
     conv2d_backward_weights_kernel_v2<<<(total_w + 255) / 256, 256, 0, stream>>>(
-        input.d_data, grad_output.d_data, fwd_ptr, weights.d_grad_w,
-        N, C_in, H_in, W_in, C_out, H_out, W_out, had_relu);
+        input.d_data, grad_output.d_data, weights.d_grad_w,
+        N, C_in, H_in, W_in, C_out, H_out, W_out);
     
     conv2d_backward_bias_kernel_v2<<<(C_out + 255) / 256, 256, 0, stream>>>(
-        grad_output.d_data, fwd_ptr, weights.d_grad_b, N, C_out, H_out, W_out, had_relu);
+        grad_output.d_data, weights.d_grad_b, N, C_out, H_out, W_out);
     
     CUDA_CHECK(cudaGetLastError());
 }
