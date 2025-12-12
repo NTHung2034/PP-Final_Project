@@ -85,7 +85,7 @@ def main():
         "opt_v2": "saved_weights_gpu_opt_v2"
     }
     
-    base_dir = f"../../models/{version_dir_map[impl_version]}/svm_features"
+    base_dir = f"/content/PP-Final_Project/models/{version_dir_map[impl_version]}/svm_features"
     
     print("\n" + "="*70)
     print(f"CIFAR-10 cudaML SVM Training with RBF Kernel [{impl_version.upper()}]")
