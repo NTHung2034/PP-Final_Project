@@ -11,6 +11,8 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 import time
 import os
 import sys
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def load_binary_data(feature_file, label_file, num_samples, feature_dim):
     """Load binary feature and label files"""
@@ -24,31 +26,34 @@ def load_binary_data(feature_file, label_file, num_samples, feature_dim):
     
     return features, labels
 
-def print_confusion_matrix(cm, class_names):
-    """Print formatted confusion matrix"""
-    print("\n=== Confusion Matrix ===")
-    print(f"{'':>12}", end='')
-    for name in class_names:
-        print(f"{name[:10]:>12}", end='')
-    print()
-    
-    for i, name in enumerate(class_names):
-        print(f"{name[:10]:>12}", end='')
-        for j in range(len(class_names)):
-            print(f"{cm[i, j]:>12}", end='')
-        print()
+def plot_confusion_matrix(cm, class_names, save_path):
+    """Plot and save confusion matrix using seaborn"""
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=class_names, yticklabels=class_names,
+                cbar_kws={'label': 'Count'})
+    plt.title('Confusion Matrix - CIFAR-10 SVM Classification', fontsize=16, pad=20)
+    plt.ylabel('True Label', fontsize=12)
+    plt.xlabel('Predicted Label', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Confusion matrix saved to: {save_path}")
+    plt.close()
 
-def print_per_class_accuracy(cm, class_names):
-    """Print per-class accuracy"""
-    print("\n=== Per-Class Accuracy ===")
+def get_per_class_accuracy(cm, class_names):
+    """Calculate per-class accuracy and return as string"""
+    result = "\n=== Per-Class Accuracy ===\n"
     for i, name in enumerate(class_names):
         total = cm[i].sum()
         acc = (cm[i, i] / total * 100) if total > 0 else 0
-        print(f"{name:>15}: {acc:>6.2f}%")
+        result += f"{name:>15}: {acc:>6.2f}%\n"
+    return result
 
 def main():
     # Configuration
-    base_dir = "/content/PP-Final_Project/models/saved_weights_gpu_naive/svm_features"
+    base_dir = "../../models/saved_weights_gpu_naive/svm_features"
     if len(sys.argv) > 1:
         base_dir = sys.argv[1]
     
@@ -168,8 +173,14 @@ def main():
     
     # Confusion matrix
     cm = confusion_matrix(y_test, test_pred)
-    print_confusion_matrix(cm, class_names)
-    print_per_class_accuracy(cm, class_names)
+    
+    # Visualize confusion matrix
+    cm_plot_path = os.path.join(base_dir, "confusion_matrix.png")
+    plot_confusion_matrix(cm, class_names, cm_plot_path)
+    
+    # Per-class accuracy
+    per_class_acc = get_per_class_accuracy(cm, class_names)
+    print(per_class_acc)
     
     # Classification report
     print("\n=== Classification Report ===")
@@ -191,13 +202,28 @@ def main():
         print(f"Warning: Could not save model: {e}")
     
     # Summary
-    print("\n" + "="*70)
-    print("TRAINING SUMMARY")
-    print("="*70)
-    print(f"Training time: {train_time:.2f}s")
-    print(f"Training accuracy: {train_accuracy * 100:.2f}%")
-    print(f"Test accuracy: {test_accuracy * 100:.2f}%")
-    print("="*70 + "\n")
+    summary_text = "\n" + "="*70 + "\n"
+    summary_text += "TRAINING SUMMARY\n"
+    summary_text += "="*70 + "\n"
+    summary_text += f"Configuration:\n"
+    summary_text += f"  Kernel: {kernel}\n"
+    summary_text += f"  C: {C}\n"
+    summary_text += f"  Gamma: {gamma}\n\n"
+    summary_text += f"Training time: {train_time:.2f}s\n"
+    summary_text += f"Training accuracy: {train_accuracy * 100:.2f}%\n"
+    summary_text += f"Test accuracy: {test_accuracy * 100:.2f}%\n"
+    summary_text += "="*70 + "\n\n"
+    summary_text += per_class_acc + "\n"
+    summary_text += "\n=== Classification Report ===\n"
+    summary_text += report + "\n"
+    
+    print(summary_text)
+    
+    # Save summary to text file
+    summary_file = os.path.join(base_dir, "training_summary.txt")
+    with open(summary_file, 'w') as f:
+        f.write(summary_text)
+    print(f"Training summary saved to: {summary_file}\n")
     
     return 0
 
