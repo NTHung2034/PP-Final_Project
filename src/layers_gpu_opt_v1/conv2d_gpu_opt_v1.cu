@@ -1,4 +1,3 @@
-// Tiled Convolution with Shared Memory + Constant Memory for Biases
 #include "layers_gpu_opt_v1/conv2d_gpu_opt_v1.cuh"
 
 // Constant memory for biases (max 256 channels)
@@ -23,8 +22,8 @@ __global__ void conv2d_forward_tiled_kernel(
     int tile_row = blockIdx.x / ((W_out + TILE_W - 1) / TILE_W);
     int tile_col = blockIdx.x % ((W_out + TILE_W - 1) / TILE_W);
     
-    int ty = threadIdx.y;
     int tx = threadIdx.x;
+    int ty = threadIdx.y;
     
     int h_out_base = tile_row * TILE_H;
     int w_out_base = tile_col * TILE_W;
@@ -80,12 +79,9 @@ __global__ void conv2d_forward_tiled_kernel(
         
         // Convolution from shared memory
         if (h_out < H_out && w_out < W_out) {
-            #pragma unroll
             for (int kh = 0; kh < KERNEL_SIZE; kh++) {
-                #pragma unroll
                 for (int kw = 0; kw < KERNEL_SIZE; kw++) {
-                    int weight_idx = c_out * (C_in * KERNEL_SIZE * KERNEL_SIZE) + 
-                                    c_in * (KERNEL_SIZE * KERNEL_SIZE) + kh * KERNEL_SIZE + kw;
+                    int weight_idx = c_out * (C_in * KERNEL_SIZE * KERNEL_SIZE) + c_in * (KERNEL_SIZE * KERNEL_SIZE) + kh * KERNEL_SIZE + kw;
                     sum += s_input[ty + kh][tx + kw] * weights[weight_idx];
                 }
             }
@@ -101,8 +97,7 @@ __global__ void conv2d_forward_tiled_kernel(
     }
 }
 
-void conv2d_forward_opt_v1(const GPUTensorOpt& input, const GPUConvWeightsOpt& weights,
-                           GPUTensorOpt& output, bool apply_relu) {
+void conv2d_forward_opt_v1(const GPUTensorOpt& input, const GPUConvWeightsOpt& weights, GPUTensorOpt& output, bool apply_relu) {
     int N = input.batch, C_in = input.channels, H_in = input.height, W_in = input.width;
     int C_out = weights.out_c, H_out = output.height, W_out = output.width;
     
@@ -142,7 +137,6 @@ __global__ void conv2d_backward_input_kernel(
     
     float grad = 0.0f;
     
-    #pragma unroll
     for (int c_out = 0; c_out < C_out; c_out++) {
         for (int kh = 0; kh < KERNEL_SIZE; kh++) {
             for (int kw = 0; kw < KERNEL_SIZE; kw++) {

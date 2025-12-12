@@ -1,18 +1,20 @@
-// GPU Tensor and Memory Pool for Optimized v1
 #pragma once
 #include <cuda_runtime.h>
 #include <cstdio>
 #include <cstdlib>
 
-#define CUDA_CHECK(call) do { \
-    cudaError_t err = call; \
-    if (err != cudaSuccess) { \
-        fprintf(stderr, "CUDA Error at %s:%d - %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-        exit(EXIT_FAILURE); \
-    } \
-} while(0)
+#define CUDA_CHECK(call)\
+{\
+    const cudaError_t error = call;\
+    if (error != cudaSuccess)\
+    {\
+        fprintf(stderr, "Error: %s:%d, ", __FILE__, __LINE__);\
+        fprintf(stderr, "code: %d, reason: %s\n", error,\
+                cudaGetErrorString(error));\
+        exit(EXIT_FAILURE);\
+    }\
+}
 
-// Lightweight GPU tensor - device memory only
 struct GPUTensorOpt {
     float* d_data;
     int batch, channels, height, width, size;
@@ -86,7 +88,8 @@ struct GPUMemoryPool {
     int batch_size;
     bool allocated;
 
-    GPUMemoryPool() : pool1_idx(nullptr), pool2_idx(nullptr), batch_size(0), allocated(false) {}
+    GPUMemoryPool() : pool1_idx(nullptr), pool2_idx(nullptr), 
+                      batch_size(0), allocated(false) {}
 
     void allocate(int bs) {
         if (allocated && bs == batch_size) return;

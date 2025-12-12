@@ -1,6 +1,6 @@
-// CIFAR-10 Autoencoder Training - GPU Optimized v1
-// Optimizations: Memory Pool, Shared Memory Tiling, Constant Memory for Biases
-#include "models/autoencoder_gpu_opt_v1.cuh"
+// CIFAR-10 Autoencoder Training - GPU Optimized v2
+// Optimizations: Kernel Fusion (Conv+ReLU+Bias), Multi-Stream Pipeline
+#include "models/autoencoder_gpu_opt_v2.cuh"
 #include "data/cifar10_loader.h"
 #include "config.h"
 #include <iostream>
@@ -45,7 +45,7 @@ public:
 };
 
 // Training statistics tracker
-class TrainingStats {
+class TrainingStatsV2 {
 public:
     std::vector<float> epoch_losses;
     std::vector<float> epoch_times;
@@ -87,8 +87,8 @@ public:
             return;
         }
         
-        out << "=== GPU OPTIMIZED v1 AUTOENCODER TRAINING SUMMARY ===\n\n";
-        out << "Optimizations: Memory Pool, Shared Memory Tiling, Constant Memory\n\n";
+        out << "=== GPU OPTIMIZED v2 AUTOENCODER TRAINING SUMMARY ===\n\n";
+        out << "Optimizations: Kernel Fusion, Multi-Stream Pipeline\n\n";
         out << "Total Training Time: " << total_training_time << " seconds\n";
         out << "Average Time Per Epoch: " << (total_training_time / epoch_losses.size()) << " seconds\n";
         out << "Number of Epochs: " << epoch_losses.size() << "\n\n";
@@ -107,7 +107,7 @@ public:
 };
 
 // Training function
-void train_autoencoder_gpu_opt_v1(
+void train_autoencoder_gpu_opt_v2(
     CIFAR10Loader& loader,
     int batch_size,
     int epochs,
@@ -115,8 +115,8 @@ void train_autoencoder_gpu_opt_v1(
     const std::string& save_dir)
 {
     std::cout << "\n" << std::string(70, '=') << std::endl;
-    std::cout << "GPU OPTIMIZED v1 AUTOENCODER TRAINING" << std::endl;
-    std::cout << "(Memory Pool + Shared Memory Tiling + Constant Memory)" << std::endl;
+    std::cout << "GPU OPTIMIZED v2 AUTOENCODER TRAINING" << std::endl;
+    std::cout << "(Kernel Fusion + Multi-Stream Pipeline)" << std::endl;
     std::cout << std::string(70, '=') << std::endl;
     std::cout << "Configuration:" << std::endl;
     std::cout << "  Batch size: " << batch_size << std::endl;
@@ -127,50 +127,54 @@ void train_autoencoder_gpu_opt_v1(
     std::cout << std::string(70, '=') << "\n" << std::endl;
     
     // Create model (allocates all memory once via Memory Pool)
-    AutoencoderGPUOptV1 model(batch_size);
+    AutoencoderGPUOptV2 model(batch_size);
     
     std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
     
     // Training statistics
-    TrainingStats stats;
+    TrainingStatsV2 stats;
     CUDATimer gpu_timer;
     
     int num_batches = loader.train_size() / batch_size;
     std::cout << "Batches per epoch: " << num_batches << "\n" << std::endl;
     
-    // Main training loop
+    // Main training loop   
     for (int epoch = 0; epoch < epochs; epoch++) {
         gpu_timer.start();
         
         loader.shuffle();
         
-        float epoch_loss = 0.0f;
+        // Reset loss accumulator at epoch start
+        model.reset_epoch_loss();
         int batches_processed = 0;
         
-        // Batch loop
+        // Batch loop with multi-stream pipeline
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
             // Get batch data pointer from loader
             float* batch_data = loader.get_batch(batch_size);
             if (!batch_data) break;
             
-            // Forward-Backward-Update in one call (no allocations!)
-            float batch_loss = model.train_step(batch_data, batch_size, learning_rate);
+            // Async load + compute pipeline (loss accumulated on GPU)
+            model.async_load_input(batch_data, batch_size);
+            model.forward_stream();
+            model.backward_stream(learning_rate);
             
-            epoch_loss += batch_loss;
             batches_processed++;
             
-            // Display progress
-            if ((batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1) {
-                float avg_loss = epoch_loss / batches_processed;
+            // Display progress (less frequently since we don't have per-batch loss)
+            if ((batch_idx + 1) % 50 == 0 || batch_idx == num_batches - 1) {
                 std::cout << "\r  Epoch [" << std::setw(3) << (epoch + 1) << "/" << epochs << "] "
                           << "Batch [" << std::setw(4) << (batch_idx + 1) << "/" << num_batches << "] "
-                          << "Loss: " << std::fixed << std::setprecision(6) << avg_loss
+                          << "Processing..."
                           << std::flush;
             }
         }
         
+        // Sync and get accumulated loss at end of epoch
+        CUDA_CHECK(cudaStreamSynchronize(model.get_compute_stream()));
+        
         float epoch_time = gpu_timer.stop();
-        float avg_epoch_loss = epoch_loss / batches_processed;
+        float avg_epoch_loss = model.get_epoch_loss(batches_processed);
         
         stats.add_epoch(avg_epoch_loss, epoch_time);
         stats.print_epoch_summary(epoch + 1, avg_epoch_loss, epoch_time, epochs);
@@ -201,7 +205,7 @@ int main(int argc, char** argv) {
         
         std::cout << "\n";
         std::cout << "╔══════════════════════════════════════════════════════════════════╗\n";
-        std::cout << "║   CIFAR-10 AUTOENCODER - GPU OPTIMIZED v1 (Memory Optimization)  ║\n";
+        std::cout << "║   CIFAR-10 AUTOENCODER - GPU OPTIMIZED v2 (Fusion + Streams)     ║\n";
         std::cout << "╚══════════════════════════════════════════════════════════════════╝\n";
         std::cout << "\n";
         
@@ -219,12 +223,13 @@ int main(int argc, char** argv) {
         std::cout << "Compute Capability: " << prop.major << "." << prop.minor << std::endl;
         std::cout << "Total Global Memory: " << (prop.totalGlobalMem / 1024 / 1024) << " MB\n" << std::endl;
         std::cout << "VRAM usage: " << get_vram_used_mb() << " MB\n\n";
+        
         // Load dataset using CIFAR_BIN_DIR from config.h
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
         
         // Train model
-        train_autoencoder_gpu_opt_v1(
+        train_autoencoder_gpu_opt_v2(
             loader,
             batch_size,
             epochs,
