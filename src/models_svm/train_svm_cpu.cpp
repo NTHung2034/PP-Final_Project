@@ -102,6 +102,8 @@ svm_node *create_svm_nodes(const std::vector<float> &features)
 
 int main()
 {
+    auto program_start = std::chrono::high_resolution_clock::now();
+
     cout << "SVM Training using LIBSVM (CPU)\n";
     cout << "================================\n\n";
 
@@ -252,6 +254,7 @@ int main()
         }
         else
         {
+            pred_out << "Actual Predicted\n";
             for (int i = 0; i < num_test; ++i)
             {
                 pred_out << test_labels[i] << " " << predictions[i] << "\n";
@@ -296,11 +299,73 @@ int main()
             printf("  %-12s: %6.2f%%\n", class_names[i], acc);
         }
 
+        // Save results to file
+        cout << "\nSaving results...\n";
+        string results_file = MODEL_DIR + "/svm_results.txt";
+        std::ofstream results_out(results_file);
+        if (results_out.is_open())
+        {
+            results_out << "SVM Classification Results\n";
+            results_out << "==========================\n\n";
+            results_out << "Training samples: " << num_train << "\n";
+            results_out << "Test samples: " << num_test << "\n";
+            results_out << "Feature dimension: " << feature_dim << "\n\n";
+            results_out << "SVM Parameters:\n";
+            results_out << "  Kernel: RBF\n";
+            results_out << "  C: " << param.C << "\n";
+            results_out << "  Gamma: " << param.gamma << " (auto)\n\n";
+            results_out << "Training time: " << elapsed << "s\n\n";
+            results_out << "Training accuracy: " << train_accuracy << "%\n";
+            results_out << "Test accuracy: " << test_accuracy << "%\n\n";
+            results_out << "Confusion Matrix:\n";
+            results_out << "True\\Pred  ";
+            for (int i = 0; i < CIFAR_CLASSES; ++i)
+            {
+                results_out << class_names[i][0] << class_names[i][1] << "  ";
+            }
+            results_out << "\n";
+            for (int i = 0; i < CIFAR_CLASSES; ++i)
+            {
+                results_out << class_names[i] << "  ";
+                for (int j = 0; j < CIFAR_CLASSES; ++j)
+                {
+                    results_out << confusion[i][j] << "  ";
+                }
+                results_out << "\n";
+            }
+            results_out << "\nPer-Class Accuracy:\n";
+            for (int i = 0; i < CIFAR_CLASSES; ++i)
+            {
+                int total = 0;
+                for (int j = 0; j < CIFAR_CLASSES; ++j)
+                {
+                    total += confusion[i][j];
+                }
+                double acc = total > 0 ? 100.0 * confusion[i][i] / total : 0.0;
+                results_out << "  " << class_names[i] << ": " << acc << "%\n";
+            }
+            results_out.close();
+            cout << "Results saved to: " << results_file << "\n";
+        }
+
         // Cleanup
         svm_free_and_destroy_model(&model);
         free_svm_problem(prob);
 
+        // Calculate total program runtime
+        auto program_end = std::chrono::high_resolution_clock::now();
+        double total_time = std::chrono::duration<double>(program_end - program_start).count();
+
         cout << "\n=== SVM Training Complete ===\n";
+        cout << "Total runtime: " << total_time << "s\n";
+
+        // Append total runtime to results file
+        std::ofstream results_append(results_file, std::ios::app);
+        if (results_append.is_open())
+        {
+            results_append << "\nTotal program runtime: " << total_time << "s\n";
+            results_append.close();
+        }
     }
     catch (const std::exception &e)
     {

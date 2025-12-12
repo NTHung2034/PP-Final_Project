@@ -134,7 +134,7 @@ int main(int argc, char **argv)
                 test_features.push_back(std::move(feature_vec));
             }
 
-            if ((b + 1) % 100 == 0)
+            if ((b + 1) % 2 == 0)
             {
                 cout << "  Processed " << test_features.size() << " / " << total_test << "\n";
             }
