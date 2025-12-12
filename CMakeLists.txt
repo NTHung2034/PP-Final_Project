@@ -161,22 +161,21 @@ if(CUDA_AVAILABLE)
     # target_link_libraries(test_layers_gpu_naive CUDA::cudart)
     # target_link_libraries(test_autoencoder_gpu_naive CUDA::cudart)
 
-    # GPU Naive Step 4 - SVM Training
-    add_executable(train_step4_naive
-        src/models_svm/train_step4_naive.cu
+    # GPU Naive - Feature Extraction for cudaML SVM
+    add_executable(train_extract_naive
+        src/models_svm/train_extract_naive.cu
         ${DATA_SOURCES}
         ${GPU_LAYER_SOURCES_NAIVE}
         ${GPU_MODEL_SOURCES_NAIVE}
-        ${SVM_SOURCES}
     )
-    set_target_properties(train_step4_naive PROPERTIES
+    set_target_properties(train_extract_naive PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-    target_link_libraries(train_step4_naive CUDA::cudart)
-    target_compile_definitions(train_step4_naive PRIVATE USE_CUDA)
+    target_link_libraries(train_extract_naive CUDA::cudart)
+    target_compile_definitions(train_extract_naive PRIVATE USE_CUDA)
 
-    message(STATUS "GPU Naive targets: train_gpu_naive, train_step4_naive, test_layers_gpu_naive, test_autoencoder_gpu_naive")
+    message(STATUS "GPU Naive targets: train_gpu_naive, train_extract_naive, test_layers_gpu_naive, test_autoencoder_gpu_naive")
 
     # -------------------------------------------------------------------------
     # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
