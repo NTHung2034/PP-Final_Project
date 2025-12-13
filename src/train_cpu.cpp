@@ -67,6 +67,7 @@ int main()
             loader.shuffle();
 
             int batches = TRAIN_IMAGES / BATCH_SIZE;
+            int batches = (TRAIN_IMAGES + BATCH_SIZE - 1) / BATCH_SIZE;
             double ep_loss = 0.0;
 
             for (int b = 0; b < batches; ++b)
