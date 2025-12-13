@@ -45,11 +45,11 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 ######################################### set source files #########################################
-# set(UTILS_SOURCES
-#     src/utils/logger.cpp
-#     src/utils/image_utils.cpp
-#     src/utils/memory_tracker.cpp
-# )
+set(UTILS_SOURCES
+    src/utils/logger.cpp
+    src/utils/image_utils.cpp
+    src/utils/memory_tracker.cpp
+)
 
 set(DATA_SOURCES
     src/data/cifar10_loader.cpp
@@ -98,10 +98,30 @@ add_executable(test_autoencoder_cpu
 # CPU Training
 # =============================================================================
 add_executable(train_cpu
-    src/train_cpu_v2.cpp
+    src/train_cpu.cpp
     ${DATA_SOURCES}
     ${CPU_LAYER_SOURCES}
     ${CPU_MODEL_SOURCES}
+    ${UTILS_SOURCES}
+)
+
+# =============================================================================
+# CPU Feature Extraction
+# =============================================================================
+add_executable(extract_features_cpu
+    src/extract_features_cpu.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
+
+# =============================================================================
+# SVM Training (CPU)
+# =============================================================================
+add_executable(train_svm_cpu
+    src/models_svm/train_svm_cpu.cpp
+    ${DATA_SOURCES}
+    external/svm.cpp
 )
 
 # =============================================================================

@@ -30,9 +30,4 @@ namespace ImageUtils
         int width,
         const std::string &filepath);
 
-    // Calculate PSNR (Peak Signal-to-Noise Ratio) between two images
-    float calculate_psnr(const Tensor &original, const Tensor &reconstructed);
-
-    // Calculate SSIM (Structural Similarity Index) - simplified version
-    float calculate_ssim(const Tensor &original, const Tensor &reconstructed);
 }
