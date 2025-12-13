@@ -198,7 +198,7 @@ void train_autoencoder_gpu_opt_v2(
 int main(int argc, char** argv) {
     try {
         // Configuration - use constants from config.h
-        const std::string save_dir = MODEL_SAVE_DIR_GPU_OPTIMIZED;
+        const std::string save_dir = MODEL_SAVE_DIR_GPU_OPT_V2;
         const int batch_size = BATCH_SIZE;
         const int epochs = EPOCHS;
         const float learning_rate = LEARNING_RATE;

@@ -60,15 +60,22 @@ void AutoencoderGPUOptV1::backward(float learning_rate) {
     
     // === DECODER BACKWARD ===
     conv2d_backward_opt_v1(pool.act8, pool.grad_out, *conv5, pool.grad8);
+    
     upsample2d_backward_opt_v1(pool.grad8, pool.grad7);
+    relu_backward_opt_v1(pool.grad7, pool.act7, pool.grad7);  // ReLU backward for conv4
     conv2d_backward_opt_v1(pool.act6, pool.grad7, *conv4, pool.grad6);
+    
     upsample2d_backward_opt_v1(pool.grad6, pool.grad5);
+    relu_backward_opt_v1(pool.grad5, pool.act5, pool.grad5);  // ReLU backward for conv3
     conv2d_backward_opt_v1(pool.act4, pool.grad5, *conv3, pool.grad4);
     
     // === ENCODER BACKWARD ===
     maxpool2d_backward_opt_v1(pool.grad4, pool.pool2_idx, pool.grad3);
+    relu_backward_opt_v1(pool.grad3, pool.act3, pool.grad3);  // ReLU backward for conv2
     conv2d_backward_opt_v1(pool.act2, pool.grad3, *conv2, pool.grad2);
+    
     maxpool2d_backward_opt_v1(pool.grad2, pool.pool1_idx, pool.grad1);
+    relu_backward_opt_v1(pool.grad1, pool.act1, pool.grad1);  // ReLU backward for conv1
     conv2d_backward_opt_v1(input_buffer, pool.grad1, *conv1, pool.grad_in);
     
     // Update weights

@@ -56,18 +56,25 @@ void AutoencoderGPUOptV2::backward_stream(float learning_rate) {
     
     mse_loss_backward_opt_v2(pool.output, input_buffer, pool.grad_out, s);
     
-    // DECODER BACKWARD (fused with ReLU gradient)
+    // DECODER BACKWARD
     conv2d_backward_opt_v2(pool.act8, pool.grad_out, *conv5, pool.grad8, nullptr, s);
+    
     upsample2d_backward_opt_v2(pool.grad8, pool.grad7, s);
-    conv2d_backward_opt_v2(pool.act6, pool.grad7, *conv4, pool.grad6, &pool.act7, s);
+    relu_backward_opt_v2(pool.grad7, pool.act7, pool.grad7, s);  // ReLU backward for conv4
+    conv2d_backward_opt_v2(pool.act6, pool.grad7, *conv4, pool.grad6, nullptr, s);
+    
     upsample2d_backward_opt_v2(pool.grad6, pool.grad5, s);
-    conv2d_backward_opt_v2(pool.act4, pool.grad5, *conv3, pool.grad4, &pool.act5, s);
+    relu_backward_opt_v2(pool.grad5, pool.act5, pool.grad5, s);  // ReLU backward for conv3
+    conv2d_backward_opt_v2(pool.act4, pool.grad5, *conv3, pool.grad4, nullptr, s);
     
     // ENCODER BACKWARD
     maxpool2d_backward_opt_v2(pool.grad4, pool.pool2_idx, pool.grad3, s);
-    conv2d_backward_opt_v2(pool.act2, pool.grad3, *conv2, pool.grad2, &pool.act3, s);
+    relu_backward_opt_v2(pool.grad3, pool.act3, pool.grad3, s);  // ReLU backward for conv2
+    conv2d_backward_opt_v2(pool.act2, pool.grad3, *conv2, pool.grad2, nullptr, s);
+    
     maxpool2d_backward_opt_v2(pool.grad2, pool.pool1_idx, pool.grad1, s);
-    conv2d_backward_opt_v2(input_buffer, pool.grad1, *conv1, pool.grad_in, &pool.act1, s);
+    relu_backward_opt_v2(pool.grad1, pool.act1, pool.grad1, s);  // ReLU backward for conv1
+    conv2d_backward_opt_v2(input_buffer, pool.grad1, *conv1, pool.grad_in, nullptr, s);
     
     update_weights(learning_rate);
 }
@@ -94,15 +101,25 @@ float AutoencoderGPUOptV2::forward(const float* h_input, int batch_size) {
 void AutoencoderGPUOptV2::backward(float learning_rate) {
     mse_loss_backward_opt_v2(pool.output, input_buffer, pool.grad_out);
     
+    // DECODER BACKWARD
     conv2d_backward_opt_v2(pool.act8, pool.grad_out, *conv5, pool.grad8, nullptr);
+    
     upsample2d_backward_opt_v2(pool.grad8, pool.grad7);
-    conv2d_backward_opt_v2(pool.act6, pool.grad7, *conv4, pool.grad6, &pool.act7);
+    relu_backward_opt_v2(pool.grad7, pool.act7, pool.grad7);
+    conv2d_backward_opt_v2(pool.act6, pool.grad7, *conv4, pool.grad6, nullptr);
+    
     upsample2d_backward_opt_v2(pool.grad6, pool.grad5);
-    conv2d_backward_opt_v2(pool.act4, pool.grad5, *conv3, pool.grad4, &pool.act5);
+    relu_backward_opt_v2(pool.grad5, pool.act5, pool.grad5);
+    conv2d_backward_opt_v2(pool.act4, pool.grad5, *conv3, pool.grad4, nullptr);
+    
+    // ENCODER BACKWARD
     maxpool2d_backward_opt_v2(pool.grad4, pool.pool2_idx, pool.grad3);
-    conv2d_backward_opt_v2(pool.act2, pool.grad3, *conv2, pool.grad2, &pool.act3);
+    relu_backward_opt_v2(pool.grad3, pool.act3, pool.grad3);
+    conv2d_backward_opt_v2(pool.act2, pool.grad3, *conv2, pool.grad2, nullptr);
+    
     maxpool2d_backward_opt_v2(pool.grad2, pool.pool1_idx, pool.grad1);
-    conv2d_backward_opt_v2(input_buffer, pool.grad1, *conv1, pool.grad_in, &pool.act1);
+    relu_backward_opt_v2(pool.grad1, pool.act1, pool.grad1);
+    conv2d_backward_opt_v2(input_buffer, pool.grad1, *conv1, pool.grad_in, nullptr);
     
     update_weights(learning_rate);
 }
