@@ -66,7 +66,6 @@ int main()
             auto ep_start = std::chrono::high_resolution_clock::now();
             loader.shuffle();
 
-            int batches = TRAIN_IMAGES / BATCH_SIZE;
             int batches = (TRAIN_IMAGES + BATCH_SIZE - 1) / BATCH_SIZE;
             double ep_loss = 0.0;
 
