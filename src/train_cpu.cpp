@@ -108,8 +108,8 @@ int main()
             cout << "  Memory: " << MemoryTracker::format_bytes(current_mem)
                  << " (Peak: " << MemoryTracker::format_bytes(MemoryTracker::get_peak_usage()) << ")\n";
 
-            // Save reconstruction samples every 5 epochs
-            if ((ep + 1) % 5 == 0)
+            // Save reconstruction samples every 2 epochs
+            if ((ep + 1) % 2 == 0)
             {
                 float *sample_data = loader.get_batch(BATCH_SIZE);
                 Tensor sample_tensor({BATCH_SIZE, 3, 32, 32}, false);
@@ -121,8 +121,7 @@ int main()
                     sample_tensor, reconstructed,
                     std::string(MODEL_SAVE_DIR),
                     "epoch_" + std::to_string(ep + 1),
-                    4 // Save 4 samples
-                );
+                    4);
             }
         }
 

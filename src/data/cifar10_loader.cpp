@@ -112,7 +112,7 @@ void CIFAR10Loader::load_batch_file(const std::string &filepath, float *images, 
         // Extract label (first byte)
         labels[start_idx + i] = record[0];
 
-        // Extract and normalize image - CHW format (linear copy, cache-friendly)
+        // Extract and normalize image - CHW format
         float *img_ptr = images + (start_idx + i) * CIFAR_PIXELS;
         const uint8_t *pixel_data = record + 1;
 
