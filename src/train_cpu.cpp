@@ -11,8 +11,8 @@
 #include <fstream>
 #include <cstring>
 
-constexpr int TRAIN_IMAGES = 500;
-constexpr int SUB_EPOCHS = 2; // 20
+constexpr int TRAIN_IMAGES = 100;
+constexpr int SUB_EPOCHS = 5;
 
 using std::cout;
 
@@ -108,21 +108,19 @@ int main()
             cout << "  Memory: " << MemoryTracker::format_bytes(current_mem)
                  << " (Peak: " << MemoryTracker::format_bytes(MemoryTracker::get_peak_usage()) << ")\n";
 
-            // Save reconstruction samples every 2 epochs
-            if ((ep + 1) % 2 == 0)
-            {
-                float *sample_data = loader.get_batch(BATCH_SIZE);
-                Tensor sample_tensor({BATCH_SIZE, 3, 32, 32}, false);
-                std::memcpy(sample_tensor.raw_data(), sample_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
+            // Save original and reconstruction images
 
-                Tensor reconstructed = model.forward(sample_tensor);
+            float *sample_data = loader.get_batch(BATCH_SIZE);
+            Tensor sample_tensor({BATCH_SIZE, 3, 32, 32}, false);
+            std::memcpy(sample_tensor.raw_data(), sample_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
 
-                ImageUtils::save_reconstruction_samples(
-                    sample_tensor, reconstructed,
-                    std::string(MODEL_SAVE_DIR),
-                    "epoch_" + std::to_string(ep + 1),
-                    4);
-            }
+            Tensor reconstructed = model.forward(sample_tensor);
+
+            ImageUtils::save_reconstruction_samples(
+                sample_tensor, reconstructed,
+                std::string(MODEL_SAVE_DIR),
+                "epoch_" + std::to_string(ep + 1),
+                1);
         }
 
         auto train_end = std::chrono::high_resolution_clock::now();

@@ -32,12 +32,11 @@ int main(int argc, char **argv)
         const int FEATURE_DIM = 8192; // 128 * 8 * 8
         const string MODEL_DIR = string(MODEL_SAVE_DIR);
 
-        // ===== Extract Training Features =====
         cout << "\n\n=== Extracting Training Features ===\n";
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
 
-        const int total_train = std::min(500, loader.train_size());
+        const int total_train = std::min(100, loader.train_size());
         const int train_batches = (total_train + BATCH_SIZE - 1) / BATCH_SIZE; // round up
 
         cout << "Processing " << total_train << " training images...\n";
@@ -96,11 +95,10 @@ int main(int argc, char **argv)
         train_out.close();
         cout << "Saved: " << train_output << "\n";
 
-        // ===== Extract Test Features =====
         cout << "\n\n=== Extracting Test Features ===\n";
         loader.load_test_data();
 
-        const int total_test = std::min(500, loader.test_size());
+        const int total_test = std::min(100, loader.test_size());
         const int test_batches = (total_test + BATCH_SIZE - 1) / BATCH_SIZE;
 
         cout << "Processing " << total_test << " test images...\n";

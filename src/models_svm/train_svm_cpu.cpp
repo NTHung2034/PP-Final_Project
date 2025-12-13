@@ -118,7 +118,7 @@ int main()
         {
             throw std::runtime_error("Failed to load training features. Run extract_features_cpu first.");
         }
-        num_train = std::min(500, num_train);
+        num_train = std::min(100, num_train);
         train_features.resize(num_train);
         cout << "  " << num_train << " samples x " << feature_dim << " features\n";
 
@@ -140,7 +140,7 @@ int main()
         {
             throw std::runtime_error("Failed to load test features. Run extract_features_cpu first.");
         }
-        num_test = std::min(500, num_test);
+        num_test = std::min(100, num_test);
         test_features.resize(num_test);
         cout << "  " << num_test << " samples x " << test_feat_dim << " features\n";
 
