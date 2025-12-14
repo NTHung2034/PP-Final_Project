@@ -157,9 +157,7 @@ float GPUAutoencoderNaive::forward_backward_update(
     GPUTensor& act8 = *activations[7];   // Upsample2 output
     GPUTensor& output = *activations[8]; // Final output
     
-    // =========================================================================
-    // FORWARD PASS - Using naive GPU kernels
-    // =========================================================================
+    // forward pass  
     conv2d_forward_gpu_naive(input, *conv1, act1, 3, 3, 1, 1, true);
     maxpool2d_forward_gpu_naive(act1, act2, d_pool1_indices);
     conv2d_forward_gpu_naive(act2, *conv2, act3, 3, 3, 1, 1, true);
@@ -171,12 +169,10 @@ float GPUAutoencoderNaive::forward_backward_update(
     upsample2d_forward_gpu_naive(act7, act8, 2);
     conv2d_forward_gpu_naive(act8, *conv5, output, 3, 3, 1, 1, false);
     
-    // Compute loss
+    // compute loss
     float loss = mse_loss_forward_gpu_naive(output, target);
     
-    // =========================================================================
-    // BACKWARD PASS - Using naive GPU kernels
-    // =========================================================================
+    // backward pass
     GPUTensor grad_output(batch, 3, 32, 32, true);
     mse_loss_backward_gpu_naive(output, target, grad_output);
     
@@ -216,9 +212,7 @@ float GPUAutoencoderNaive::forward_backward_update(
     GPUTensor grad_input(batch, 3, 32, 32, true);
     conv2d_backward_gpu_naive(input, grad_act1, *conv1, grad_input, 3, 3, 1, 1);
     
-    // =========================================================================
-    // UPDATE WEIGHTS (SGD) - Using naive GPU kernel
-    // =========================================================================
+    // update weights (SGD) 
     sgd_update_gpu_naive(conv1->d_weights, conv1->d_grad_w, learning_rate, conv1->weight_size);
     sgd_update_gpu_naive(conv1->d_bias, conv1->d_grad_b, learning_rate, conv1->bias_size);
     

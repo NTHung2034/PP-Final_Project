@@ -1,8 +1,5 @@
 #include "layers_gpu_naive/upsample_gpu_naive.cuh"
 
-// ============================================================================
-// UPSAMPLE FORWARD KERNEL (Naive)
-// ============================================================================
 __global__ void upsample2d_forward_kernel_naive(
     const float* __restrict__ input,
     float* __restrict__ output,
@@ -51,9 +48,6 @@ void upsample2d_forward_gpu_naive(
     CUDA_CHECK(cudaGetLastError());
 }
 
-// ============================================================================
-// UPSAMPLE BACKWARD KERNEL (Naive)
-// ============================================================================
 __global__ void upsample2d_backward_kernel_naive(
     const float* __restrict__ grad_output,
     float* __restrict__ grad_input,

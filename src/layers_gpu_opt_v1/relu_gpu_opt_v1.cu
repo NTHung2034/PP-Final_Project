@@ -1,4 +1,3 @@
-// ReLU - Optimized v1 (element-wise, already efficient)
 #include "layers_gpu_opt_v1/relu_gpu_opt_v1.cuh"
 
 __global__ void relu_forward_kernel(float* data, int size) {

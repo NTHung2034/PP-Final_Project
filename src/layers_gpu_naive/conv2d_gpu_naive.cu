@@ -1,8 +1,5 @@
 #include "layers_gpu_naive/conv2d_gpu_naive.cuh"
 
-// ============================================================================
-// CONVOLUTION FORWARD KERNEL (Naive)
-// ============================================================================
 __global__ void conv2d_forward_kernel_naive(
     const float* __restrict__ input,
     const float* __restrict__ weights,
@@ -82,9 +79,6 @@ void conv2d_forward_gpu_naive(
     CUDA_CHECK(cudaGetLastError());
 }
 
-// ============================================================================
-// CONVOLUTION BACKWARD KERNELS (Naive)
-// ============================================================================
 __global__ void conv2d_backward_input_kernel_naive(
     const float* __restrict__ grad_output,
     const float* __restrict__ weights,

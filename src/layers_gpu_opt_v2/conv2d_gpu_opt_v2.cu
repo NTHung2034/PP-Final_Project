@@ -1,8 +1,5 @@
 #include "layers_gpu_opt_v2/conv2d_gpu_opt_v2.cuh"
 
-// =============================================================================
-// FUSED TILED CONVOLUTION FORWARD - Conv + Bias + ReLU in single kernel
-// =============================================================================
 __global__ void conv2d_forward_fused_kernel(
     const float* __restrict__ input,
     const float* __restrict__ weights,
@@ -76,9 +73,6 @@ void conv2d_forward_opt_v2(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
     CUDA_CHECK(cudaGetLastError());
 }
 
-// =============================================================================
-// BACKWARD - Gradient computation (ReLU handled separately for efficiency)
-// =============================================================================
 __global__ void conv2d_backward_input_kernel_v2(
     const float* __restrict__ grad_output,
     const float* __restrict__ weights,

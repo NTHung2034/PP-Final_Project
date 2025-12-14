@@ -53,19 +53,8 @@ public:
     //  Input tensor [N, 3, 32, 32]
     //  Output features [N, 128, 8, 8]
     void extract_features(const GPUTensor& input, GPUTensor& features);
+ 
     
-    //  Forward-Backward-Update - Training Mode
-    //  Complete training step:
-    //  1. Forward pass with activation caching
-    //  2. Compute MSE loss
-    //  3. Backward pass
-    //  4. SGD weight update
-
-    //  Input tensor [N, 3, 32, 32]
-    //  Target tensor [N, 3, 32, 32]
-    //  learning_rate Learning rate for SGD
-    //  activations  Preallocated activation buffers
-    //  return             MSE loss value
     float forward_backward_update(
         const GPUTensor& input,
         const GPUTensor& target,

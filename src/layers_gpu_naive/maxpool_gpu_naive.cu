@@ -1,8 +1,5 @@
 #include "layers_gpu_naive/maxpool_gpu_naive.cuh"
 
-// ============================================================================
-// MAXPOOL FORWARD KERNEL (Naive)
-// ============================================================================
 __global__ void maxpool2d_forward_kernel_naive(
     const float* __restrict__ input,
     float* __restrict__ output,
@@ -73,9 +70,6 @@ void maxpool2d_forward_gpu_naive(
     CUDA_CHECK(cudaGetLastError());
 }
 
-// ============================================================================
-// MAXPOOL BACKWARD KERNEL (Naive)
-// ============================================================================
 __global__ void maxpool2d_backward_kernel_naive(
     const float* __restrict__ grad_output,
     const int* __restrict__ pool_indices,

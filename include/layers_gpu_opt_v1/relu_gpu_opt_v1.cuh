@@ -1,4 +1,3 @@
-// ReLU - Optimized v1 (same as naive, already memory-efficient)
 #pragma once
 #include "data/gpu_tensor_opt.cuh"
 

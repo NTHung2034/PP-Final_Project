@@ -1,4 +1,3 @@
-// MaxPool 2x2 - Optimized v1
 #include "layers_gpu_opt_v1/maxpool_gpu_opt_v1.cuh"
 
 __global__ void maxpool2d_forward_kernel(

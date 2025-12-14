@@ -1,8 +1,5 @@
 #include "layers_gpu_naive/mse_loss_gpu_naive.cuh"
 
-// ============================================================================
-// MSE LOSS FORWARD KERNEL (Naive)
-// ============================================================================
 __global__ void mse_loss_forward_kernel_naive(
     const float* __restrict__ prediction,
     const float* __restrict__ target,
@@ -63,9 +60,6 @@ float mse_loss_forward_gpu_naive(
     return total_loss / size;
 }
 
-// ============================================================================
-// MSE LOSS BACKWARD KERNEL (Naive)
-// ============================================================================
 __global__ void mse_loss_backward_kernel_naive(
     const float* __restrict__ prediction,
     const float* __restrict__ target,

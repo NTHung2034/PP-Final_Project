@@ -1,4 +1,3 @@
-// Upsample 2x (Nearest Neighbor) - Optimized v1
 #pragma once
 #include "data/gpu_tensor_opt.cuh"
 

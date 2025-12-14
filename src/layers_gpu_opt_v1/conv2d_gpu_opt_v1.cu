@@ -113,9 +113,6 @@ void conv2d_forward_opt_v1(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
     CUDA_CHECK(cudaGetLastError());
 }
 
-// =============================================================================
-// CONVOLUTION BACKWARD - Gradient computation
-// =============================================================================
 __global__ void conv2d_backward_input_kernel(
     const float* __restrict__ grad_output,
     const float* __restrict__ weights,

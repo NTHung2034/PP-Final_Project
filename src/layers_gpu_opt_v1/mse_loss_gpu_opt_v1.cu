@@ -1,4 +1,3 @@
-// MSE Loss - Optimized v1 (shared memory reduction + atomicAdd)
 #include "layers_gpu_opt_v1/mse_loss_gpu_opt_v1.cuh"
 
 __global__ void mse_loss_forward_kernel(

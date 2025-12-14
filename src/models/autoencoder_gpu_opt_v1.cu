@@ -10,7 +10,7 @@ __global__ void sgd_update_kernel(float* weights, const float* grads, float lr, 
 }
 
 AutoencoderGPUOptV1::AutoencoderGPUOptV1(int batch_size) {
-    // Initialize convolution weights
+    // initialize convolution weights
     conv1 = new GPUConvWeightsOpt(256, 3, 3, 3);    // 3->256
     conv2 = new GPUConvWeightsOpt(128, 256, 3, 3);  // 256->128
     conv3 = new GPUConvWeightsOpt(128, 128, 3, 3);  // 128->128
@@ -20,10 +20,10 @@ AutoencoderGPUOptV1::AutoencoderGPUOptV1(int batch_size) {
     conv1->initXavier(); conv2->initXavier(); conv3->initXavier();
     conv4->initXavier(); conv5->initXavier();
     
-    // Allocate memory pool (all buffers at once)
+    // allocate memory pool (all buffers at once)
     pool.allocate(batch_size);
     
-    // Allocate persistent input buffer
+    // allocate persistent input buffer
     input_buffer.allocate(batch_size, 3, 32, 32);
 }
 
@@ -33,7 +33,7 @@ AutoencoderGPUOptV1::~AutoencoderGPUOptV1() {
 }
 
 float AutoencoderGPUOptV1::forward(const float* h_input, int batch_size) {
-    // Copy input to device
+    // copy input to device
     CUDA_CHECK(cudaMemcpy(input_buffer.d_data, h_input, 
                           batch_size * 3 * 32 * 32 * sizeof(float), cudaMemcpyHostToDevice));
     

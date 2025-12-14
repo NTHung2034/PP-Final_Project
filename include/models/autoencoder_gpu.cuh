@@ -9,17 +9,9 @@
 #include <cuda_runtime.h>
 #include <vector>
 
-// 
 // SGD Weight Update
-// 
 // Updates weights using gradient descent: w = w - lr * grad_w
-// 
-// @param d_weights      Device pointer to weights
-// @param d_gradients    Device pointer to gradients
-// @param learning_rate  Learning rate
-// @param size           Number of elements
-// @param stream         CUDA stream for async execution
-// 
+
 void sgd_update_gpu(
     float* d_weights,
     const float* d_gradients,
@@ -59,37 +51,18 @@ public:
     void allocatePoolingIndices(int batch_size);
     
     // Forward Pass - Inference Only
-
     // Runs full encoder-decoder pipeline
-    // Does not store intermediate activations
-    // @param input  - Input tensor [N, 3, 32, 32]
-    // @param output - Output tensor [N, 3, 32, 32] (reconstructed image)
     void forward_inference(const GPUTensor& input, GPUTensor& output);
     
 
     // Extract Features - Encoder Only
 
     // Returns latent representation (8x8x128 = 8192 dimensions)
-    // Used for downstream tasks like SVM classification
-    // @param input    - Input tensor [N, 3, 32, 32]
-    // @param features - Output features [N, 128, 8, 8]
     void extract_features(const GPUTensor& input, GPUTensor& features);
     
     
     // Forward-Backward-Update - Training Mode
-    // 
-    // Performs complete training step:
-    // 1. Forward pass with activation caching
-    // 2. Compute MSE loss
-    // 3. Backward pass (gradient computation)
-    // 4. SGD weight update
-     
-    // @param input        Input tensor [N, 3, 32, 32]
-    // @param target       Target tensor [N, 3, 32, 32] (same as input for autoencoder)
-    // @param learning_rate Learning rate for SGD
-    // @param activations  Preallocated activation buffers (9 tensors)
     // @return             MSE loss value
-     
     float forward_backward_update(
         const GPUTensor& input,
         const GPUTensor& target,

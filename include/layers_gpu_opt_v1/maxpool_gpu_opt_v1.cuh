@@ -1,4 +1,3 @@
-// MaxPool 2x2 - Optimized v1
 #pragma once
 #include "data/gpu_tensor_opt.cuh"
 

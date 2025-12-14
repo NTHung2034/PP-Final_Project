@@ -1,8 +1,5 @@
 #include "layers_gpu_naive/relu_gpu_naive.cuh"
 
-// ============================================================================
-// ReLU FORWARD KERNEL (Naive)
-// ============================================================================
 __global__ void relu_forward_kernel_naive(
     float* __restrict__ data,
     int size)
@@ -26,9 +23,6 @@ void relu_forward_gpu_naive(
     CUDA_CHECK(cudaGetLastError());
 }
 
-// ============================================================================
-// ReLU BACKWARD KERNEL (Naive)
-// ============================================================================
 __global__ void relu_backward_kernel_naive(
     const float* __restrict__ grad_output,
     const float* __restrict__ forward_output,
