@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
         std::vector<uint8_t> test_labels(test_labels_int.begin(), test_labels_int.end());
 
         // ====== Step 4: Save Features to .bin Files ======
-        std::cout << "\n=== Step 4: Saving Features to .bin Files ===" << std::endl;
+        std::cout << "\n=== Step 4: Saving Features to .bin ===" << std::endl;
 
         std::string output_dir = weights_dir + "/svm_features";
         std::string mkdir_cmd = "mkdir -p " + output_dir;
@@ -250,30 +250,6 @@ int main(int argc, char** argv) {
         test_labels_stream.close();
         std::cout << "Saved test labels: " << test_labels_file << std::endl;
         std::cout << "  Shape: [" << num_test_samples << "]" << std::endl;
-
-        // Save metadata
-        std::string metadata_file = output_dir + "/metadata.txt";
-        std::ofstream metadata_stream(metadata_file);
-        if (metadata_stream.is_open()) {
-            metadata_stream << "num_train_samples: " << num_train_samples << std::endl;
-            metadata_stream << "num_test_samples: " << num_test_samples << std::endl;
-            metadata_stream << "feature_dim: " << feature_dim << std::endl;
-            metadata_stream << "num_classes: 10" << std::endl;
-            metadata_stream << "data_type: float32 (features), uint8 (labels)" << std::endl;
-            metadata_stream.close();
-            std::cout << "Saved metadata: " << metadata_file << std::endl;
-        }
-
-        std::cout << "\n=== Summary ===" << std::endl;
-        std::cout << "Feature extraction time: " << std::fixed << std::setprecision(2) 
-                  << extract_time << "s" << std::endl;
-        std::cout << "All features saved to: " << output_dir << std::endl;
-        
-        std::cout << "\n";
-        std::cout << "╔════════════════════════════════════════════════════════════════╗\n";
-        std::cout << "║              FEATURE EXTRACTION COMPLETED!                     ║\n";
-        std::cout << "╚════════════════════════════════════════════════════════════════╝\n";
-        std::cout << "\n";
 
         return 0;
         
