@@ -44,16 +44,7 @@ int main()
         AutoencoderCPU model;
         cout << "Memory after model init: " << MemoryTracker::format_bytes(MemoryTracker::get_current_usage());
 
-        // Initial loss check
-        float *batch_data = loader.get_batch(BATCH_SIZE);
-        Tensor input_tensor({BATCH_SIZE, 3, 32, 32}, false);
-        std::memcpy(input_tensor.raw_data(), batch_data, BATCH_SIZE * 3 * 32 * 32 * sizeof(float));
-
-        Tensor output = model.forward(input_tensor);
-        float init_loss = model.compute_loss(output, input_tensor);
-        cout << "\n(Initial loss check)\nInitial loss: " << std::fixed << std::setprecision(6) << init_loss;
-
-        // Training
+                // Training
         std::vector<float> losses;
         std::vector<double> epoch_times;
         std::vector<size_t> epoch_memory;
