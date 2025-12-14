@@ -10,34 +10,34 @@ SVM Parameters:
   C: 10
   Gamma: 0.00012207 (auto)
 
-Training time: 19.2014s
+Training time: 8.31494s
 
-Training accuracy: 60%
-Test accuracy: 30.4%
+Training accuracy: 59.8%
+Test accuracy: 32%
 
 Confusion Matrix:
 True\Pred  ai  au  bi  ca  de  do  fr  ho  sh  tr  
-airplane  24  3  4  0  0  1  4  1  12  8  
-automobile  0  16  0  1  2  0  5  2  5  10  
-bird  8  1  8  2  17  2  5  3  4  1  
-cat  2  3  6  5  9  5  12  2  1  4  
-deer  5  1  6  0  20  0  4  1  1  2  
-dog  4  5  12  4  8  5  6  1  0  3  
-frog  0  2  5  2  20  1  21  1  1  1  
-horse  5  7  2  4  7  2  5  6  1  8  
-ship  16  5  1  0  1  1  1  0  23  9  
-truck  4  9  1  1  1  0  5  2  9  24  
+airplane  22  3  5  0  3  1  2  2  12  7  
+automobile  0  16  1  1  0  0  7  1  5  10  
+bird  9  1  8  3  16  2  6  2  4  0  
+cat  0  3  5  4  10  4  14  2  1  6  
+deer  2  1  7  0  20  0  5  1  0  4  
+dog  3  4  13  5  9  4  6  3  0  1  
+frog  1  2  5  0  20  0  23  1  1  1  
+horse  4  6  3  1  9  1  7  10  1  5  
+ship  16  6  1  0  1  1  1  0  24  7  
+truck  3  6  1  0  2  0  4  2  9  29  
 
 Per-Class Accuracy:
-  airplane: 42.1053%
+  airplane: 38.5965%
   automobile: 39.0244%
   bird: 15.6863%
-  cat: 10.2041%
+  cat: 8.16327%
   deer: 50%
-  dog: 10.4167%
-  frog: 38.8889%
-  horse: 12.766%
-  ship: 40.3509%
-  truck: 42.8571%
+  dog: 8.33333%
+  frog: 42.5926%
+  horse: 21.2766%
+  ship: 42.1053%
+  truck: 51.7857%
 
-Total program runtime: 38.4192s
+Total program runtime: 21.1337s
