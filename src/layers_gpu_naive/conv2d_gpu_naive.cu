@@ -68,7 +68,7 @@ void conv2d_forward_gpu_naive(
     int H_out = (H_in + 2 * padding - kernel_h) / stride + 1;
     int W_out = (W_in + 2 * padding - kernel_w) / stride + 1;
     
-    int threads = 256;
+    int threads = 256; // number of threads per block
     int blocks_z = (H_out * W_out + threads - 1) / threads;
     dim3 grid(N, C_out, blocks_z);
     dim3 block(threads);

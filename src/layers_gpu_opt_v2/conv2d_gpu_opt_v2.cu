@@ -45,8 +45,7 @@ __global__ void conv2d_forward_fused_kernel(
             for (int kh = 0; kh < KERNEL_SIZE_V2; kh++) {
                 #pragma unroll
                 for (int kw = 0; kw < KERNEL_SIZE_V2; kw++) {
-                    sum += s_input[ty + kh][tx + kw] * 
-                           weights[c_out * (C_in * 9) + c_in * 9 + kh * 3 + kw];
+                    sum += s_input[ty + kh][tx + kw] * weights[c_out * (C_in * 9) + c_in * 9 + kh * 3 + kw];
                 }
             }
         }

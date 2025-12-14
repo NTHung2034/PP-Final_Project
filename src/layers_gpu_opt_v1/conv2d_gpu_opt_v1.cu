@@ -3,9 +3,6 @@
 // Constant memory for biases (max 256 channels)
 __constant__ float c_bias[256];
 
-// =============================================================================
-// TILED CONVOLUTION FORWARD - Shared Memory Optimization
-// =============================================================================
 __global__ void conv2d_forward_tiled_kernel(
     const float* __restrict__ input,
     const float* __restrict__ weights,
