@@ -36,7 +36,7 @@ int main(int argc, char **argv)
         CIFAR10Loader loader(CIFAR_BIN_DIR);
         loader.load_train_data();
 
-        const int total_train = std::min(100, loader.train_size());
+        const int total_train = std::min(500, loader.train_size());
         const int train_batches = (total_train + BATCH_SIZE - 1) / BATCH_SIZE; // round up
 
         cout << "Processing " << total_train << " training images...\n";
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
         cout << "\n\n=== Extracting Test Features ===\n";
         loader.load_test_data();
 
-        const int total_test = std::min(100, loader.test_size());
+        const int total_test = std::min(500, loader.test_size());
         const int test_batches = (total_test + BATCH_SIZE - 1) / BATCH_SIZE;
 
         cout << "Processing " << total_test << " test images...\n";

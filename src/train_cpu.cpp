@@ -11,8 +11,8 @@
 #include <fstream>
 #include <cstring>
 
-constexpr int TRAIN_IMAGES = 100;
-constexpr int SUB_EPOCHS = 5;
+constexpr int TRAIN_IMAGES = 500;
+constexpr int SUB_EPOCHS = 2;
 
 using std::cout;
 
@@ -44,7 +44,7 @@ int main()
         AutoencoderCPU model;
         cout << "Memory after model init: " << MemoryTracker::format_bytes(MemoryTracker::get_current_usage());
 
-                // Training
+        // Training
         std::vector<float> losses;
         std::vector<double> epoch_times;
         std::vector<size_t> epoch_memory;
