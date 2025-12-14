@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""
-cudaML SVM Training Script
-Trains SVM classifier on extracted features using GPU-accelerated cudaML library
-
-Usage:
-    python cuml_svm_train.py [implementation]
-    
-Arguments:
-    implementation: Choose GPU implementation version (default: naive)
-                   - naive:  Basic GPU implementation
-                   - opt_v1: First optimization version
-                   - opt_v2: Second optimization version
-
-Examples:
-    python cuml_svm_train.py naive
-    python cuml_svm_train.py opt_v1
-    python cuml_svm_train.py opt_v2
-"""
 
 import numpy as np
 import cuml
@@ -29,7 +11,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def load_binary_data(feature_file, label_file, num_samples, feature_dim):
-    """Load binary feature and label files"""
     features = np.fromfile(feature_file, dtype=np.float32)
     features = features.reshape(num_samples, feature_dim)
     
@@ -41,7 +22,6 @@ def load_binary_data(feature_file, label_file, num_samples, feature_dim):
     return features, labels
 
 def plot_confusion_matrix(cm, class_names, save_path):
-    """Plot and save confusion matrix using seaborn"""
     plt.figure(figsize=(12, 10))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=class_names, yticklabels=class_names,
@@ -52,12 +32,11 @@ def plot_confusion_matrix(cm, class_names, save_path):
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=100, bbox_inches='tight')
     print(f"Confusion matrix saved to: {save_path}")
     plt.close()
 
 def get_per_class_accuracy(cm, class_names):
-    """Calculate per-class accuracy and return as string"""
     result = "\n=== Per-Class Accuracy ===\n"
     for i, name in enumerate(class_names):
         total = cm[i].sum()
@@ -142,13 +121,13 @@ def main():
     # Compute mean and std from training set
     mean = np.mean(X_train, axis=0, dtype=np.float32)
     std = np.std(X_train, axis=0, dtype=np.float32)
-    std[std < 1e-8] = 1.0  # Avoid division by zero
+    std[std < 1e-8] = 1.0 
     
     # Normalize both train and test
     X_train = (X_train - mean) / std
     X_test = (X_test - mean) / std
     
-    print(f"Features normalized (mean=0, std=1)")
+    print(f"Features normalized")
     print()
     
     # ====== Step 2: Train SVM ======
@@ -261,3 +240,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
