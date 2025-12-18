@@ -99,7 +99,7 @@ void conv2d_forward_opt_v1(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
     int C_out = weights.out_c, H_out = output.height, W_out = output.width;
     
     // Copy bias to constant memory
-    CUDA_CHECK(cudaMemcpyToSymbol(c_bias, weights.d_bias, weights.bias_size * sizeof(float)));
+    CUDA_CHECK(cudaMemcpyToSymbol(c_bias, weights.d_bias, weights.bias_size * sizeof(float), 0, cudaMemcpyDeviceToDevice));
     
     // Grid: (num_tiles, C_out, N), Block: (TILE_W, TILE_H)
     int tiles_w = (W_out + TILE_W - 1) / TILE_W;
