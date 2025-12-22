@@ -73,28 +73,6 @@ set(CPU_MODEL_SOURCES
 
 ######################################### Set up executables #########################################
 # =============================================================================
-# Test Dataloader Only
-# =============================================================================
-add_executable(test_dataloader
-    tests/test_dataloader.cpp
-    ${DATA_SOURCES}
-)
-
-# =============================================================================
-# CPU Tests 
-# =============================================================================
-add_executable(test_layers_cpu
-    tests/tests_cpu/test_layers.cpp
-    ${CPU_LAYER_SOURCES}
-)
-
-add_executable(test_autoencoder_cpu
-    tests/tests_cpu/test_autoencoder.cpp
-    ${CPU_LAYER_SOURCES}
-    ${CPU_MODEL_SOURCES}
-)
-
-# =============================================================================
 # CPU Training
 # =============================================================================
 add_executable(train_cpu
@@ -157,30 +135,6 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_naive CUDA::cudart)
     target_compile_definitions(train_gpu_naive PRIVATE USE_CUDA)
 
-    # GPU Naive Tests (disabled)
-    # add_executable(test_layers_gpu_naive
-    #     tests/tests_gpu_naive/test_layers_gpu_naive.cu
-    #     ${GPU_LAYER_SOURCES_NAIVE}
-    # )
-    # 
-    # add_executable(test_autoencoder_gpu_naive
-    #     tests/tests_gpu_naive/test_autoencoder_gpu_naive.cu
-    #     ${GPU_LAYER_SOURCES_NAIVE}
-    #     ${GPU_MODEL_SOURCES_NAIVE}
-    # )
-    # 
-    # set_target_properties(test_layers_gpu_naive PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    # set_target_properties(test_autoencoder_gpu_naive PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    #
-    # target_link_libraries(test_layers_gpu_naive CUDA::cudart)
-    # target_link_libraries(test_autoencoder_gpu_naive CUDA::cudart)
-
     # GPU Naive - Feature Extraction for cudaML SVM
     add_executable(train_extract_naive
         src/models_svm/train_extract_naive.cu
@@ -195,7 +149,7 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_extract_naive CUDA::cudart)
     target_compile_definitions(train_extract_naive PRIVATE USE_CUDA)
 
-    message(STATUS "GPU Naive targets: train_gpu_naive, train_extract_naive, test_layers_gpu_naive, test_autoencoder_gpu_naive")
+    message(STATUS "GPU Naive targets: train_gpu_naive, train_extract_naive")
 
     # -------------------------------------------------------------------------
     # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
@@ -238,30 +192,6 @@ if(CUDA_AVAILABLE)
     )
     target_link_libraries(train_extract_opt_v1 CUDA::cudart)
     target_compile_definitions(train_extract_opt_v1 PRIVATE USE_CUDA)
-
-    # GPU Optimized v1 Tests (disabled)
-    # add_executable(test_layers_gpu_opt_v1
-    #     tests/tests_gpu_opt_v1/test_layers_gpu_opt_v1.cu
-    #     ${GPU_LAYER_SOURCES_OPT_V1}
-    # )
-    # 
-    # add_executable(test_autoencoder_gpu_opt_v1
-    #     tests/tests_gpu_opt_v1/test_autoencoder_gpu_opt_v1.cu
-    #     ${GPU_LAYER_SOURCES_OPT_V1}
-    #     ${GPU_MODEL_SOURCES_OPT_V1}
-    # )
-    # 
-    # set_target_properties(test_layers_gpu_opt_v1 PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    # set_target_properties(test_autoencoder_gpu_opt_v1 PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    #
-    # target_link_libraries(test_layers_gpu_opt_v1 CUDA::cudart)
-    # target_link_libraries(test_autoencoder_gpu_opt_v1 CUDA::cudart)
 
     message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, train_extract_opt_v1")
 
@@ -307,29 +237,26 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_extract_opt_v2 CUDA::cudart)
     target_compile_definitions(train_extract_opt_v2 PRIVATE USE_CUDA)
 
-    # GPU Optimized v2 Tests (disabled)
-    # add_executable(test_layers_gpu_opt_v2
-    #     tests/tests_gpu_opt_v2/test_layers_gpu_opt_v2.cu
-    #     ${GPU_LAYER_SOURCES_OPT_V2}
-    # )
-    # 
-    # add_executable(test_autoencoder_gpu_opt_v2
-    #     tests/tests_gpu_opt_v2/test_autoencoder_gpu_opt_v2.cu
-    #     ${GPU_LAYER_SOURCES_OPT_V2}
-    #     ${GPU_MODEL_SOURCES_OPT_V2}
-    # )
-    # 
-    # set_target_properties(test_layers_gpu_opt_v2 PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    # set_target_properties(test_autoencoder_gpu_opt_v2 PROPERTIES
-    #     CUDA_SEPARABLE_COMPILATION ON
-    #     CUDA_ARCHITECTURES "${CUDA_ARCH}"
-    # )
-    #
-    # target_link_libraries(test_layers_gpu_opt_v2 CUDA::cudart)
-    # target_link_libraries(test_autoencoder_gpu_opt_v2 CUDA::cudart)
+    # Output comparison test (CPU, GPU Naive, Opt V1, Opt V2)
+    add_executable(test_comparison_cpu_gpu
+        tests/comparison_cpu_gpu.cu
+        ${DATA_SOURCES}
+        ${CPU_LAYER_SOURCES}
+        ${CPU_MODEL_SOURCES}
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+        ${GPU_LAYER_SOURCES_OPT_V2}
+        ${GPU_MODEL_SOURCES_OPT_V2}
+    )
+    set_target_properties(test_comparison_cpu_gpu PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(test_comparison_cpu_gpu CUDA::cudart)
+    target_compile_definitions(test_comparison_cpu_gpu PRIVATE USE_CUDA)
+
 
     message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, train_extract_opt_v2")
 endif()
