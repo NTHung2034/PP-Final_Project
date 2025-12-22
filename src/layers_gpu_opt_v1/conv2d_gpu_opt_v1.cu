@@ -31,51 +31,23 @@ __global__ void conv2d_forward_tiled_kernel(
     
     // Iterate over input channels
     for (int c_in = 0; c_in < C_in; c_in++) {
-        // Cooperative loading of input tile into shared memory
-        // Each thread loads one element + halo elements
+        // Cooperative loading of input tile (including 1-pixel halo) into shared memory
         int h_in_base = h_out_base - PAD;
         int w_in_base = w_out_base - PAD;
-        
-        // Load main tile element
-        int h_load = h_in_base + ty;
-        int w_load = w_in_base + tx;
-        
-        if (ty < TILE_H + 2 && tx < TILE_W + 2) {
-            if (h_load >= 0 && h_load < H_in && w_load >= 0 && w_load < W_in) {
-                s_input[ty][tx] = input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_load * W_in + w_load];
-            } else {
-                s_input[ty][tx] = 0.0f;  // Zero padding
-            }
-        }
-        
-        // Load extra halo elements (threads at edge of block load extra)
-        if (tx < 2 && (w_out_base + TILE_W + tx) < W_out + PAD) {
-            int h_extra = h_in_base + ty;
-            int w_extra = w_in_base + TILE_W + tx;
-            if (ty < TILE_H + 2) {
-                if (h_extra >= 0 && h_extra < H_in && w_extra >= 0 && w_extra < W_in) {
-                    s_input[ty][TILE_W + tx] = input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_extra * W_in + w_extra];
-                } else {
-                    s_input[ty][TILE_W + tx] = 0.0f;
-                }
-            }
-        }
-        if (ty < 2 && (h_out_base + TILE_H + ty) < H_out + PAD) {
-            int h_extra = h_in_base + TILE_H + ty;
-            int w_extra = w_in_base + tx;
-            if (tx < TILE_W + 2) {
-                if (h_extra >= 0 && h_extra < H_in && w_extra >= 0 && w_extra < W_in) {
-                    s_input[TILE_H + ty][tx] = input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_extra * W_in + w_extra];
-                } else {
-                    s_input[TILE_H + ty][tx] = 0.0f;
-                }
+        for (int load_y = ty; load_y < TILE_H + 2; load_y += blockDim.y) {
+            for (int load_x = tx; load_x < TILE_W + 2; load_x += blockDim.x) {
+                int h_load = h_in_base + load_y;
+                int w_load = w_in_base + load_x;
+                s_input[load_y][load_x] = (h_load >= 0 && h_load < H_in && w_load >= 0 && w_load < W_in)
+                    ? input[n * (C_in * H_in * W_in) + c_in * (H_in * W_in) + h_load * W_in + w_load]
+                    : 0.0f;
             }
         }
         
         __syncthreads();
         
         // Convolution from shared memory
-        if (h_out < H_out && w_out < W_out) {
+        if (h_out < H_out && w_out < W_out && ty < TILE_H && tx < TILE_W) {
             for (int kh = 0; kh < KERNEL_SIZE; kh++) {
                 for (int kw = 0; kw < KERNEL_SIZE; kw++) {
                     int weight_idx = c_out * (C_in * KERNEL_SIZE * KERNEL_SIZE) + c_in * (KERNEL_SIZE * KERNEL_SIZE) + kh * KERNEL_SIZE + kw;
@@ -105,7 +77,7 @@ void conv2d_forward_opt_v1(const GPUTensorOpt& input, const GPUConvWeightsOpt& w
     int tiles_w = (W_out + TILE_W - 1) / TILE_W;
     int tiles_h = (H_out + TILE_H - 1) / TILE_H;
     dim3 grid(tiles_h * tiles_w, C_out, N);
-    dim3 block(TILE_W + 2, TILE_H + 2);  // Extra threads for halo loading
+    dim3 block(TILE_W, TILE_H);
     
     conv2d_forward_tiled_kernel<<<grid, block>>>(
         input.d_data, weights.d_weights, output.d_data,

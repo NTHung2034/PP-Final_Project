@@ -7,6 +7,10 @@
 - [Overview](#overview)
 - [Project Architecture](#project-architecture)
 - [Requirements](#requirements)
+- [Setup](#setup)
+- [Compilation](#compilation)
+- [Execution](#execution)
+- [Expected Outputs](#expected-outputs)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 
@@ -28,10 +32,94 @@
 - **CUDA Toolkit:** 11.0+ (optional, for GPU support)
 - **OpenMP:** Required for CPU parallelization
 - **LIBSVM:** For SVM classification (Phase 4)
+- **cuDNN (optional):** Improves convolution performance when available
 
 ### Windows-Specific
 - MinGW-w64 with GCC or MSVC                          ****IMPORTANT***
 - Windows PowerShell or Git Bash
+- Ensure Visual Studio Build Tools or MinGW are on PATH
+
+---
+
+## Setup
+
+- Install CMake ≥ 3.18 and a C++17 compiler (GCC 9+, Clang 10+, or MSVC 2019+).
+- Install CUDA Toolkit 11.0+; recommended 11.8+ with cuDNN for best performance.
+- Verify `nvcc --version` and GPU driver compatibility.
+- Add CUDA `bin` and compiler toolchain to your PATH.
+- Download CIFAR-10 with `./scripts/download_cifar10.sh` from repo root.
+- LIBSVM is vendored under `external/`; no extra install needed for default build.
+
+---
+
+## Compilation
+
+Create a clean build directory:
+```bash
+mkdir -p build
+cd build
+```
+
+CPU-only build:
+```bash
+cmake .. -DENABLE_CUDA=OFF
+cmake --build . --config Release
+```
+
+GPU build (Naive, Opt V1, Opt V2):
+```bash
+cmake .. -DENABLE_CUDA=ON
+cmake --build . --config Release
+```
+
+Notes:
+- CUDA architectures are set in `CMakeLists.txt` (`89;75;70;61;50`); adjust if your GPU differs.
+- CMake auto-creates `data/` and the `models/saved_weights*` directories.
+- On Windows, use the same generator for configure and build (e.g., `-G "Visual Studio 17 2022"`).
+
+---
+
+## Execution
+
+From the `build` directory:
+
+Tests and correctness:
+```bash
+./test_comparison_cpu_gpu          # CPU vs GPU Naive / Opt V1 / Opt V2 outputs
+```
+
+Training:
+```bash
+./train_cpu                        # CPU baseline
+./train_gpu_naive                  # GPU Naive
+./train_gpu_opt_v1                 # GPU Optimized v1
+./train_gpu_opt_v2                 # GPU Optimized v2
+```
+
+Feature extraction + SVM:
+```bash
+./extract_features_cpu
+./train_extract_naive
+./train_extract_opt_v1
+./train_extract_opt_v2
+./train_svm_cpu
+```
+
+Data and outputs:
+- CIFAR-10 binaries are read from `data/` (see `include/config.h`).
+- Model checkpoints are written to `models/saved_weights*`.
+
+Hardware guidance:
+- GPU compute capability ≥ 6.0; Opt V1/V2 run best on Turing/Ampere/Ada.
+- Memory: ≥ 6GB VRAM minimum; 8–12GB recommended for batch size 64.
+
+---
+
+## Expected Outputs
+
+- `test_comparison_cpu_gpu` should report near-zero MSE between CPU, GPU Naive, and GPU Opt V2; GPU Opt V1 should also match after the shared-memory fix.
+- Training binaries log loss per epoch and save weights to `models/saved_weights*`.
+- Feature extraction scripts emit latent vectors and SVM results under the same directories.
 
 ---
 
@@ -77,20 +165,7 @@ If you choose **Google colab**
 
 ### 4. Run Tests (build directory)
 ```bash
-# Test dataloader
-./test_dataloader   
-
-# Test cpu layers
-./test_layers
-
-# Test cpu autoencoder 
-./test_autoencoder
-
-# Test gpu layers
-./test_layers_gpu
-
-# Test gpu autoencoder
-./test_autoencoder_gpu
+./test_comparison_cpu_gpu   # CPU vs GPU Naive / Opt V1 / Opt V2
 ```
 
 ### 5. Train with CPU
