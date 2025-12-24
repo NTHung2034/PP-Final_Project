@@ -86,8 +86,8 @@ add_executable(train_cpu
 # =============================================================================
 # CPU Feature Extraction
 # =============================================================================
-add_executable(extract_features_cpu
-    src/extract_features_cpu.cpp
+add_executable(extract_cpu
+    src/models_svm/extract_cpu.cpp
     ${DATA_SOURCES}
     ${CPU_LAYER_SOURCES}
     ${CPU_MODEL_SOURCES}
@@ -102,8 +102,16 @@ add_executable(train_svm_cpu
     external/svm.cpp
 )
 
+# Backward-compatible alias (older README/scripts)
+add_executable(extract_features_cpu
+    src/models_svm/extract_cpu.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
+
 # =============================================================================
-# GPU Support - Naive Implementation
+# GPU - Naive Implementation
 # =============================================================================
 if(CUDA_AVAILABLE)
     # CUDA architecture targets
@@ -135,21 +143,21 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_naive CUDA::cudart)
     target_compile_definitions(train_gpu_naive PRIVATE USE_CUDA)
 
-    # GPU Naive - Feature Extraction for cudaML SVM
-    add_executable(train_extract_naive
-        src/models_svm/train_extract_naive.cu
+    # GPU Naive - Feature Extraction for cuML SVM
+    add_executable(extract_naive
+        src/models_svm/extract_naive.cu
         ${DATA_SOURCES}
         ${GPU_LAYER_SOURCES_NAIVE}
         ${GPU_MODEL_SOURCES_NAIVE}
     )
-    set_target_properties(train_extract_naive PROPERTIES
+    set_target_properties(extract_naive PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-    target_link_libraries(train_extract_naive CUDA::cudart)
-    target_compile_definitions(train_extract_naive PRIVATE USE_CUDA)
+    target_link_libraries(extract_naive CUDA::cudart)
+    target_compile_definitions(extract_naive PRIVATE USE_CUDA)
 
-    message(STATUS "GPU Naive targets: train_gpu_naive, train_extract_naive")
+    message(STATUS "GPU Naive targets: train_gpu_naive, extract_naive")
 
     # -------------------------------------------------------------------------
     # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
@@ -179,21 +187,21 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_opt_v1 CUDA::cudart)
     target_compile_definitions(train_gpu_opt_v1 PRIVATE USE_CUDA)
 
-    # GPU Optimized v1 - Feature Extraction for cudaML SVM
-    add_executable(train_extract_opt_v1
-        src/models_svm/train_extract_opt_v1.cu
+    # GPU Optimized v1 - Feature Extraction for cuML SVM
+    add_executable(extract_opt_v1
+        src/models_svm/extract_opt_v1.cu
         ${DATA_SOURCES}
         ${GPU_LAYER_SOURCES_OPT_V1}
         ${GPU_MODEL_SOURCES_OPT_V1}
     )
-    set_target_properties(train_extract_opt_v1 PROPERTIES
+    set_target_properties(extract_opt_v1 PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-    target_link_libraries(train_extract_opt_v1 CUDA::cudart)
-    target_compile_definitions(train_extract_opt_v1 PRIVATE USE_CUDA)
+    target_link_libraries(extract_opt_v1 CUDA::cudart)
+    target_compile_definitions(extract_opt_v1 PRIVATE USE_CUDA)
 
-    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, train_extract_opt_v1")
+    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, extract_opt_v1")
 
     # -------------------------------------------------------------------------
     # GPU Optimized v2 - CUDA Streams + Kernel Fusion + Full Unrolling
@@ -223,19 +231,19 @@ if(CUDA_AVAILABLE)
     target_link_libraries(train_gpu_opt_v2 CUDA::cudart)
     target_compile_definitions(train_gpu_opt_v2 PRIVATE USE_CUDA)
 
-    # GPU Optimized v2 - Feature Extraction for cudaML SVM
-    add_executable(train_extract_opt_v2
-        src/models_svm/train_extract_opt_v2.cu
+    # GPU Optimized v2 - Feature Extraction for cuML SVM
+    add_executable(extract_opt_v2
+        src/models_svm/extract_opt_v2.cu
         ${DATA_SOURCES}
         ${GPU_LAYER_SOURCES_OPT_V2}
         ${GPU_MODEL_SOURCES_OPT_V2}
     )
-    set_target_properties(train_extract_opt_v2 PROPERTIES
+    set_target_properties(extract_opt_v2 PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_ARCHITECTURES "${CUDA_ARCH}"
     )
-    target_link_libraries(train_extract_opt_v2 CUDA::cudart)
-    target_compile_definitions(train_extract_opt_v2 PRIVATE USE_CUDA)
+    target_link_libraries(extract_opt_v2 CUDA::cudart)
+    target_compile_definitions(extract_opt_v2 PRIVATE USE_CUDA)
 
     # Output comparison test (CPU, GPU Naive, Opt V1, Opt V2)
     add_executable(test_comparison_cpu_gpu
@@ -257,8 +265,7 @@ if(CUDA_AVAILABLE)
     target_link_libraries(test_comparison_cpu_gpu CUDA::cudart)
     target_compile_definitions(test_comparison_cpu_gpu PRIVATE USE_CUDA)
 
-
-    message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, train_extract_opt_v2")
+    message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, extract_opt_v2")
 endif()
 
 # Create data and models directories
