@@ -130,7 +130,7 @@ cmake --build . --config Release
 GPU build (Naive, Opt V1, Opt V2):
 ```bash
 cmake .. -DENABLE_CUDA=ON
-make
+cmake --build . --config Release
 ```
 
 ### **Using ThunderSVM (Alternative GPU-accelerated SVM)**
@@ -140,8 +140,7 @@ If you want to use ThunderSVM instead of LIBSVM/cuML:
 1. **Build ThunderSVM**:
    ```bash
    cd external/thundersvm
-   mkdir build && cd build
-   cmake .. && make -j
+   mkdir build && cd build && cmake .. && make -j
    cd ../../..
    ```
 
