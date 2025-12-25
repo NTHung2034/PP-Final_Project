@@ -46,7 +46,7 @@ void SVMClassifier::train(const std::vector<float>& features,
         
         for (int j = 0; j < feature_dim; ++j) {
             float value = features[i * feature_dim + j];
-            if (value != 0.0f) {  // Sparse format - skip zeros
+            if (value != 0.0f) { 
                 train_file << " " << (j + 1) << ":" << value;
             }
         }
@@ -77,24 +77,21 @@ void SVMClassifier::train(const std::vector<float>& features,
     args_str.push_back("-s");
     args_str.push_back("0");              // C-SVC
     args_str.push_back("-t");
-    args_str.push_back("2");              // RBF kernel (use 0 for linear)
+    args_str.push_back("2");              // RBF kernel 
     args_str.push_back("-c");
     args_str.push_back("10");             // C parameter
     args_str.push_back("-g");
-    args_str.push_back(std::to_string(1.0 / feature_dim));  // gamma
+    args_str.push_back(std::to_string(1.0f / feature_dim));  // gamma
     args_str.push_back("-e");
     args_str.push_back("0.001");          // epsilon
     args_str.push_back("-o");
     args_str.push_back("1");              // GPU device ID
     args_str.push_back(temp_train_file);
     args_str.push_back("/tmp/thundersvm_model.txt");
-    
-    // Convert to char* array
     std::vector<char*> args;
     for (auto& s : args_str) {
         args.push_back(const_cast<char*>(s.c_str()));
     }
-    
     // Train using ThunderSVM C API
     thundersvm_train(args.size(), args.data());
     
@@ -106,7 +103,7 @@ void SVMClassifier::train(const std::vector<float>& features,
               << " seconds (" << (train_time / 60.0f) << " minutes)" << std::endl;
     std::cout << "========================================" << std::endl;
     
-    svm_model_ = reinterpret_cast<void*>(1);  // Mark as trained
+    svm_model_ = reinterpret_cast<void*>(1); 
 }
 
 void SVMClassifier::predict(const std::vector<float>& features,
