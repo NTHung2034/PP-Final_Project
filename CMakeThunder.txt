@@ -1,0 +1,303 @@
+# =============================================================================
+# CUDA Autoencoder for CIFAR-10 Feature Learning with ThunderSVM Integration
+# =============================================================================
+# NOTE: This is an alternative CMake configuration for using ThunderSVM
+# To use this file, replace CMakeLists.txt with this file:
+#   cp CMakeThunder.txt CMakeLists.txt
+# =============================================================================
+cmake_minimum_required(VERSION 3.18)
+project(CUDAAutoencoder CXX C)
+
+# =============================================================================
+# C++ Standard Configuration
+# =============================================================================
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# =============================================================================
+# Build Options
+# =============================================================================
+option(ENABLE_CUDA "Enable CUDA support (requires NVIDIA GPU)" ON)
+
+# =============================================================================
+# Find Required Packages
+# =============================================================================
+# find_package(OpenMP REQUIRED)
+
+# CUDA Support
+if(ENABLE_CUDA)
+    find_package(CUDAToolkit)
+    if(CUDAToolkit_FOUND)
+        message(STATUS "CUDA Toolkit found - GPU support enabled")
+        enable_language(CUDA)
+        set(CUDA_AVAILABLE TRUE)
+    else()
+        message(WARNING "CUDA requested but not found - building CPU-only version")
+        set(CUDA_AVAILABLE FALSE)
+    endif()
+else()
+    message(STATUS "Building CPU-only version (set -DENABLE_CUDA=ON for GPU support)")
+    set(CUDA_AVAILABLE FALSE)
+endif()
+
+# Project Directories
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/external/thundersvm/include)
+link_directories(${CMAKE_SOURCE_DIR}/external/thundersvm/build/lib)
+
+# Define project root path for use in code
+add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
+######################################### set source files #########################################
+set(UTILS_SOURCES
+    src/utils/logger.cpp
+    src/utils/image_utils.cpp
+    src/utils/memory_tracker.cpp
+)
+
+set(DATA_SOURCES
+    src/data/cifar10_loader.cpp
+)
+
+set(SVM_SOURCES
+    external/svm.cu
+    external/libsvm/svm.cpp
+)
+
+set(THUNDER_SVM_SOURCES
+    external/thunder_svm.cu
+)
+
+set(CPU_LAYER_SOURCES
+    src/layers/conv2d_cpu.cpp
+    src/layers/relu_cpu.cpp
+    src/layers/maxpool_cpu.cpp
+    src/layers/upsample_cpu.cpp
+)
+
+set(CPU_MODEL_SOURCES
+    src/models/autoencoder_cpu.cpp
+)
+
+######################################### Set up executables #########################################
+# =============================================================================
+# CPU Training
+# =============================================================================
+add_executable(train_cpu
+    src/train_cpu.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+    ${UTILS_SOURCES}
+)
+
+# =============================================================================
+# CPU Feature Extraction
+# =============================================================================
+add_executable(extract_cpu
+    src/models_svm/extract_cpu.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
+
+# =============================================================================
+# SVM Training (CPU)
+# =============================================================================
+add_executable(train_svm_cpu
+    src/models_svm/train_svm_cpu.cpp
+    ${DATA_SOURCES}
+    external/svm.cpp
+)
+
+# Backward-compatible alias (older README/scripts)
+add_executable(extract_features_cpu
+    src/models_svm/extract_cpu.cpp
+    ${DATA_SOURCES}
+    ${CPU_LAYER_SOURCES}
+    ${CPU_MODEL_SOURCES}
+)
+
+# =============================================================================
+# GPU - Naive Implementation
+# =============================================================================
+if(CUDA_AVAILABLE)
+    # CUDA architecture targets
+    set(CUDA_ARCH "89;75")
+
+    set(GPU_LAYER_SOURCES_NAIVE
+        src/layers_gpu_naive/conv2d_gpu_naive.cu
+        src/layers_gpu_naive/maxpool_gpu_naive.cu
+        src/layers_gpu_naive/relu_gpu_naive.cu
+        src/layers_gpu_naive/upsample_gpu_naive.cu
+        src/layers_gpu_naive/mse_loss_gpu_naive.cu
+    )
+
+    set(GPU_MODEL_SOURCES_NAIVE
+        src/models/autoencoder_gpu_naive.cu
+    )
+
+    # GPU Naive Training
+    add_executable(train_gpu_naive
+        src/train_gpu_naive.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
+    )
+    set_target_properties(train_gpu_naive PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_gpu_naive CUDA::cudart)
+    target_compile_definitions(train_gpu_naive PRIVATE USE_CUDA)
+
+    # GPU Naive - Feature Extraction for cuML SVM
+    add_executable(extract_naive
+        src/models_svm/extract_naive.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
+    )
+    set_target_properties(extract_naive PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(extract_naive CUDA::cudart)
+    target_compile_definitions(extract_naive PRIVATE USE_CUDA)
+
+    # =============================================================================
+    # ThunderSVM - GPU Naive Implementation
+    # =============================================================================
+    add_executable(thundersvm_naive
+        src/models_svm/thundersvm_naive.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
+        ${THUNDER_SVM_SOURCES}
+    )
+    set_target_properties(thundersvm_naive PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(thundersvm_naive CUDA::cudart thundersvm)
+    target_compile_definitions(thundersvm_naive PRIVATE USE_CUDA)
+
+    message(STATUS "GPU Naive targets: train_gpu_naive, extract_naive, thundersvm_naive")
+
+    # -------------------------------------------------------------------------
+    # GPU Optimized v1 - Memory Optimization (Shared Memory + Memory Pool)
+    # -------------------------------------------------------------------------
+    set(GPU_LAYER_SOURCES_OPT_V1
+        src/layers_gpu_opt_v1/conv2d_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/relu_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/maxpool_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/upsample_gpu_opt_v1.cu
+        src/layers_gpu_opt_v1/mse_loss_gpu_opt_v1.cu
+    )
+
+    set(GPU_MODEL_SOURCES_OPT_V1
+        src/models/autoencoder_gpu_opt_v1.cu
+    )
+
+    add_executable(train_gpu_opt_v1
+        src/train_gpu_opt_v1.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    set_target_properties(train_gpu_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_gpu_opt_v1 CUDA::cudart)
+    target_compile_definitions(train_gpu_opt_v1 PRIVATE USE_CUDA)
+
+    # GPU Optimized v1 - Feature Extraction for cuML SVM
+    add_executable(extract_opt_v1
+        src/models_svm/extract_opt_v1.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+    )
+    set_target_properties(extract_opt_v1 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(extract_opt_v1 CUDA::cudart)
+    target_compile_definitions(extract_opt_v1 PRIVATE USE_CUDA)
+
+    message(STATUS "GPU Optimized v1 targets: train_gpu_opt_v1, extract_opt_v1")
+
+    # -------------------------------------------------------------------------
+    # GPU Optimized v2 - CUDA Streams + Kernel Fusion + Full Unrolling
+    # -------------------------------------------------------------------------
+    set(GPU_LAYER_SOURCES_OPT_V2
+        src/layers_gpu_opt_v2/conv2d_gpu_opt_v2.cu
+        src/layers_gpu_opt_v2/relu_gpu_opt_v2.cu
+        src/layers_gpu_opt_v2/maxpool_gpu_opt_v2.cu
+        src/layers_gpu_opt_v2/upsample_gpu_opt_v2.cu
+        src/layers_gpu_opt_v2/mse_loss_gpu_opt_v2.cu
+    )
+
+    set(GPU_MODEL_SOURCES_OPT_V2
+        src/models/autoencoder_gpu_opt_v2.cu
+    )
+
+    add_executable(train_gpu_opt_v2
+        src/train_gpu_opt_v2.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V2}
+        ${GPU_MODEL_SOURCES_OPT_V2}
+    )
+    set_target_properties(train_gpu_opt_v2 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(train_gpu_opt_v2 CUDA::cudart)
+    target_compile_definitions(train_gpu_opt_v2 PRIVATE USE_CUDA)
+
+    # GPU Optimized v2 - Feature Extraction for cuML SVM
+    add_executable(extract_opt_v2
+        src/models_svm/extract_opt_v2.cu
+        ${DATA_SOURCES}
+        ${GPU_LAYER_SOURCES_OPT_V2}
+        ${GPU_MODEL_SOURCES_OPT_V2}
+    )
+    set_target_properties(extract_opt_v2 PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(extract_opt_v2 CUDA::cudart)
+    target_compile_definitions(extract_opt_v2 PRIVATE USE_CUDA)
+
+    # Output comparison test (CPU, GPU Naive, Opt V1, Opt V2)
+    add_executable(test_comparison_cpu_gpu
+        tests/comparison_cpu_gpu.cu
+        ${DATA_SOURCES}
+        ${CPU_LAYER_SOURCES}
+        ${CPU_MODEL_SOURCES}
+        ${GPU_LAYER_SOURCES_NAIVE}
+        ${GPU_MODEL_SOURCES_NAIVE}
+        ${GPU_LAYER_SOURCES_OPT_V1}
+        ${GPU_MODEL_SOURCES_OPT_V1}
+        ${GPU_LAYER_SOURCES_OPT_V2}
+        ${GPU_MODEL_SOURCES_OPT_V2}
+    )
+    set_target_properties(test_comparison_cpu_gpu PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CUDA_ARCH}"
+    )
+    target_link_libraries(test_comparison_cpu_gpu CUDA::cudart)
+    target_compile_definitions(test_comparison_cpu_gpu PRIVATE USE_CUDA)
+
+    message(STATUS "GPU Optimized v2 targets: train_gpu_opt_v2, extract_opt_v2")
+endif()
+
+# Create data and models directories
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/data)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_naive)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_opt_v1)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_opt_v2)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/models/saved_weights_gpu_optimized)

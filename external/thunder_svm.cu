@@ -1,4 +1,4 @@
-#include "svm.h"
+#include "thunder_svm.h"
 #include "./thundersvm/svm_interface_api.h"  // ThunderSVM C API
 #include <iostream>
 #include <algorithm>

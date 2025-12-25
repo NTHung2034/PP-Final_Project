@@ -130,8 +130,40 @@ cmake --build . --config Release
 GPU build (Naive, Opt V1, Opt V2):
 ```bash
 cmake .. -DENABLE_CUDA=ON
-cmake --build . --config Release
+make
 ```
+
+### **Using ThunderSVM (Alternative GPU-accelerated SVM)**
+
+If you want to use ThunderSVM instead of LIBSVM/cuML:
+
+1. **Build ThunderSVM**:
+   ```bash
+   cd external/thundersvm
+   mkdir build && cd build
+   cmake .. && make -j
+   cd ../../..
+   ```
+
+2. **Replace CMake configuration**:
+   ```bash
+   # Use ThunderSVM configuration
+   cp CMakeThunder.txt CMakeLists.txt
+   ```
+
+3. **Build with ThunderSVM**:
+   ```bash
+   mkdir -p build
+   cd build
+   cmake .. -DENABLE_CUDA=ON
+   make
+   ```
+
+4. **Run ThunderSVM executables**:
+   ```bash
+   # From build directory only after have naive weight
+   ./thundersvm_naive      # GPU Naive + ThunderSVM
+   ```
 
 Notes:
 - CUDA architectures are set in `CMakeLists.txt` (`89;75;70;61;50`); adjust if your GPU differs.
@@ -164,6 +196,12 @@ Feature extraction + SVM:
 ./extract_opt_v1
 ./extract_opt_v2
 ./train_svm_cpu
+```
+
+ThunderSVM training (if using CMakeThunder.txt):
+```bash
+# After training the autoencoder with train_gpu_naive
+./thundersvm_naive      # Combines feature extraction + ThunderSVM classification
 ```
 
 cuML SVM training (Google Colab):
