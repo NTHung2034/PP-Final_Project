@@ -115,7 +115,7 @@ add_executable(extract_features_cpu
 # =============================================================================
 if(CUDA_AVAILABLE)
     # CUDA architecture targets
-    set(CUDA_ARCH "89;75;70;61;50")
+    set(CUDA_ARCH "89;75")
 
     set(GPU_LAYER_SOURCES_NAIVE
         src/layers_gpu_naive/conv2d_gpu_naive.cu
