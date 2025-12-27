@@ -1,5 +1,7 @@
 # CUDA Autoencoder for CIFAR-10 Feature Learning
-
+- **Link youtube**: [https://youtu.be/a8Oy_k7BFmk](https://youtu.be/a8Oy_k7BFmk)
+- **Link github**: [https://github.com/NTHung2034/PP-Final_Project](https://github.com/NTHung2034/PP-Final_Project)
+- **SVM weight**: [Drive](https://drive.google.com/file/d/1TWnHNML5OJB_OUQVgGkouz4s0W8Mnyof/view?fbclid=IwY2xjawO8GMNleHRuA2FlbQIxMABicmlkETExMVFBekFzZlB5NWFVSGFTc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHrN_0gPbF_rB5xf8qLo0FvzPl-MAiLmCLZfigeIaF_eWACIQFGUOm1ynX5BU_aem_JQrEhVuOB0ZtqnnZdwkQ0Q)
 ---
 
 ## **Table of Contents**
