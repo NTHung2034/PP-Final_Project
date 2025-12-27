@@ -224,7 +224,7 @@ Data and outputs:
 
 Run outputs (files may vary slightly by variant, but follow these patterns):
 
-- **Correctness** (`test_comparison_cpu_gpu`): prints reconstruction error; **MSE should be very small** (typically \( \sim 10^{-6} \)–\(10^{-3}\)).
+- **Correctness** (`test_comparison_cpu_gpu`): prints reconstruction error; **MSE should be very small** (~ 1e6 - 1e3).
 - **Training** (`train_*`): epoch loss logs + weights under `models/saved_weights*` (e.g. `models/saved_weights/cpu_final.bin`, GPU `models/saved_weights_gpu_*/training_summary.txt`).
 - **Feature extraction** (`extract_*`):
   - CPU: `models/saved_weights/train_features_cpu.bin`, `models/saved_weights/test_features_cpu.bin`
@@ -305,4 +305,5 @@ PP-Final_Project/
 └── build/                         # Generated build outputs
 
 ```
+
 
