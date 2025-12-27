@@ -239,7 +239,7 @@ Run outputs (files may vary slightly by variant, but follow these patterns):
 
 - If you use PowerShell, executables may be invoked as `.\train_cpu`, `.\test_comparison_cpu_gpu`, ...
 - CUDA architectures are set in `CMakeLists.txt` (`89;75;70;61;50`). Adjust if your GPU is not covered.
-- **GPU memory**: ≥ 6GB VRAM minimum; 8–12GB recommended for batch size 64.
+- **GPU memory**: ≥ 6GB VRAM minimum; 8-12GB recommended for batch size 64.
 - **Recommended GPUs**: RTX 3060+ or NVIDIA T4+ (Compute Capability ≥ 6.0).
 
 ---
@@ -305,3 +305,4 @@ PP-Final_Project/
 └── build/                         # Generated build outputs
 
 ```
+
