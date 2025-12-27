@@ -112,7 +112,7 @@ The learned latent features can be used for downstream classification with SVM (
 - Add CUDA `bin` and compiler toolchain to your PATH.
 - Download CIFAR-10 with `./scripts/download_cifar10.sh` from repo root.
 - LIBSVM is vendored under `external/`; no extra install needed for default build.
-- Optional (cuML SVM on Google Colab): `cuml`, `scikit-learn`, `matplotlib`, `seaborn`
+- cuML SVM (must have).
 
 ---
 
@@ -305,5 +305,6 @@ PP-Final_Project/
 └── build/                         # Generated build outputs
 
 ```
+
 
 
